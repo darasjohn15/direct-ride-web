@@ -1,0 +1,94 @@
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f6f8fb;
+  color: #14213d;
+}
+
+/* Main content area (everything to the right of sidebar) */
+.app-layout__content {
+  flex: 1;
+  padding: 28px;
+  overflow-y: auto;
+}
+
+/* Optional: constrain content width for nicer layouts */
+.app-layout__content-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Page spacing helper */
+.page-section {
+  margin-bottom: 24px;
+}
+
+/* Card base (you'll reuse this everywhere 👀) */
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(20, 33, 61, 0.06);
+}
+
+/* Headings */
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.page-subtitle {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin-bottom: 20px;
+}
+
+/* Grid utility for dashboards */
+.grid {
+  display: grid;
+  gap: 16px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .app-layout__content {
+    padding: 20px;
+  }
+
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .app-layout__content {
+    padding: 16px;
+  }
+
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+}

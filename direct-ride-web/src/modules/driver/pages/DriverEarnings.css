@@ -1,0 +1,235 @@
+.driver-earnings {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.driver-earnings__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.driver-earnings__eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.driver-earnings__title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #14213d;
+}
+
+.driver-earnings__subtitle {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.earnings-card,
+.earnings-summary-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(20, 33, 61, 0.06);
+}
+
+.earnings-summary-card {
+  background: linear-gradient(135deg, #14213d 0%, #1f315d 100%);
+  color: #ffffff;
+}
+
+.earnings-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.earnings-card__header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #14213d;
+}
+
+.earnings-card__helper {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.week-selector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid #e7ecf3;
+  border-radius: 16px;
+  background: #fbfcfe;
+  padding: 18px;
+}
+
+.week-selector__arrow {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: #14213d;
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.week-selector__arrow:hover:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.week-selector__arrow:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.week-selector__center {
+  flex: 1;
+  text-align: center;
+}
+
+.week-selector__label {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #14213d;
+}
+
+.earnings-summary-card__label {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.earnings-summary-card__amount {
+  margin: 0;
+  font-size: 2.6rem;
+  font-weight: 800;
+}
+
+.earnings-summary-card__rides {
+  margin: 10px 0 0;
+  font-size: 0.98rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.daily-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.daily-breakdown__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid #e7ecf3;
+  border-radius: 14px;
+  padding: 16px;
+  background: #fbfcfe;
+}
+
+.daily-breakdown__left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.daily-breakdown__day {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #14213d;
+}
+
+.daily-breakdown__rides {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #6b7280;
+}
+
+.daily-breakdown__amount {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #14213d;
+}
+
+.earnings-empty-state {
+  text-align: left;
+}
+
+.earnings-empty-state h3 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  color: #ffffff;
+}
+
+.earnings-empty-state p {
+  margin: 0;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.earnings-empty-state--secondary {
+  border: 1px dashed #d8dee8;
+  border-radius: 16px;
+  padding: 24px;
+  background: #fbfcfe;
+}
+
+.earnings-empty-state--secondary h3 {
+  color: #14213d;
+}
+
+.earnings-empty-state--secondary p {
+  color: #6b7280;
+}
+
+@media (max-width: 640px) {
+  .driver-earnings__title {
+    font-size: 1.6rem;
+  }
+
+  .earnings-card,
+  .earnings-summary-card {
+    padding: 18px;
+  }
+
+  .week-selector {
+    gap: 12px;
+  }
+
+  .week-selector__arrow {
+    width: 40px;
+    height: 40px;
+  }
+
+  .earnings-summary-card__amount {
+    font-size: 2.1rem;
+  }
+
+  .daily-breakdown__row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

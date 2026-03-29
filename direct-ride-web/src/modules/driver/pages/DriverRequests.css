@@ -1,0 +1,141 @@
+.driver-requests {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.driver-requests__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.driver-requests__eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.driver-requests__title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #14213d;
+}
+
+.driver-requests__subtitle {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.requests-toolbar-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(20, 33, 61, 0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.requests-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.requests-tab {
+  border: 1px solid #d8dee8;
+  background: #ffffff;
+  color: #344054;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.requests-tab:hover {
+  background: #f8fafc;
+}
+
+.requests-tab--active {
+  background: #14213d;
+  color: #ffffff;
+  border-color: #14213d;
+}
+
+.requests-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.requests-filter label {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #344054;
+}
+
+.requests-filter select {
+  border: 1px solid #d8dee8;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  background: #ffffff;
+  color: #14213d;
+}
+
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.requests-empty-state {
+  background: #ffffff;
+  border: 1px dashed #d8dee8;
+  border-radius: 18px;
+  padding: 28px;
+  box-shadow: 0 10px 30px rgba(20, 33, 61, 0.04);
+}
+
+.requests-empty-state h3 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  color: #14213d;
+}
+
+.requests-empty-state p {
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .driver-requests__title {
+    font-size: 1.6rem;
+  }
+
+  .requests-toolbar-card {
+    padding: 16px;
+  }
+
+  .requests-filter {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .requests-filter select {
+    width: 100%;
+  }
+}
