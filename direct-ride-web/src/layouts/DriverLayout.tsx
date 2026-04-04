@@ -5,7 +5,7 @@ import './AppLayout.css';
 const driverNavItems = [
   { label: 'Dashboard', path: '/driver/dashboard' },
   { label: 'Schedule', path: '/driver/schedule' },
-  { label: 'Pending Requests', path: '/driver/requests' },
+  { label: 'Requests', path: '/driver/requests' },
   { label: 'Earnings', path: '/driver/earnings' },
   { label: 'Profile', path: '/driver/profile' },
 ];
@@ -13,7 +13,7 @@ const driverNavItems = [
 export default function DriverLayout() {
   return (
     <div className="app-layout">
-      <AppNavigation title="DirectRide Driver" items={driverNavItems} />
+      <AppNavigation title="DirectRide" items={driverNavItems} />
       <main className="app-layout__content">
         <div className="app-layout__content-inner">
           <Outlet />

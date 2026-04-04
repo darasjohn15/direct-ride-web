@@ -109,7 +109,6 @@ export default function DriverDashboard() {
     <div className="driver-dashboard">
       <header className="driver-dashboard__header">
         <div>
-          <p className="driver-dashboard__eyebrow">Driver Dashboard</p>
           <h1 className="driver-dashboard__title">
             Good morning, {mockDriver.firstName}
           </h1>

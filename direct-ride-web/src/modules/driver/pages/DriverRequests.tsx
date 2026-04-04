@@ -151,7 +151,6 @@ export default function DriverRequests() {
     <div className="driver-requests">
       <header className="driver-requests__header">
         <div>
-          <p className="driver-requests__eyebrow">Driver</p>
           <h1 className="driver-requests__title">Requests</h1>
           <p className="driver-requests__subtitle">
             Manage your ride requests.

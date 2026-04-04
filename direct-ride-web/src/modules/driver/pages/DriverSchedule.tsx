@@ -178,7 +178,6 @@ export default function DriverSchedule() {
     <div className="driver-schedule">
       <header className="driver-schedule__header">
         <div>
-          <p className="driver-schedule__eyebrow">Driver</p>
           <h1 className="driver-schedule__title">Schedule</h1>
           <p className="driver-schedule__subtitle">
             Set when you&apos;re available for rides.
@@ -233,7 +232,7 @@ export default function DriverSchedule() {
             <h2>Availability</h2>
             <button
               type="button"
-              className="schedule-button"
+              className="schedule-button schedule-button--primary"
               onClick={() => {
                 setShowAddForm((prev) => !prev);
                 setError('');

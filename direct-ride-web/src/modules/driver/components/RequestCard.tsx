@@ -34,15 +34,15 @@ export default function RequestCard({
   return (
     <article className="request-card">
       <div className="request-card__top">
-        <div>
-          <p className="request-card__pickup-time">{request.pickupTime}</p>
-          <h3 className="request-card__rider">{request.riderName}</h3>
-        </div>
+  <div className="request-card__top-main">
+    <p className="request-card__pickup-time">{request.pickupTime}</p>
+    <h3 className="request-card__rider">{request.riderName}</h3>
+  </div>
 
-        <span className={`request-card__status request-card__status--${request.status}`}>
-          {formatStatusLabel(request.status)}
-        </span>
-      </div>
+  <span className={`request-card__status request-card__status--${request.status}`}>
+    {formatStatusLabel(request.status)}
+  </span>
+</div>
 
       <div className="request-card__route">
         <div className="request-card__location-group">

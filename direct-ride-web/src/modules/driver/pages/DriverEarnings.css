@@ -11,15 +11,6 @@
   gap: 16px;
 }
 
-.driver-earnings__eyebrow {
-  margin: 0 0 6px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #6b7280;
-}
-
 .driver-earnings__title {
   margin: 0;
   font-size: 2rem;

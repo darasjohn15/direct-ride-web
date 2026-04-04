@@ -60,7 +60,6 @@ export default function DriverProfile() {
     <div className="driver-profile">
       <header className="driver-profile__header">
         <div>
-          <p className="driver-profile__eyebrow">Driver</p>
           <h1 className="driver-profile__title">Profile</h1>
           <p className="driver-profile__subtitle">
             Manage your account details and pricing settings.

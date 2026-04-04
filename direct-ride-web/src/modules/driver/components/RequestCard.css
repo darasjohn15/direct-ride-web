@@ -13,7 +13,12 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
+  gap: 12px;
+}
+
+.request-card__top-main {
+  min-width: 0;
+  flex: 1;
 }
 
 .request-card__pickup-time {
@@ -28,17 +33,21 @@
   font-size: 1.1rem;
   font-weight: 700;
   color: #14213d;
+  line-height: 1.25;
+  overflow-wrap: break-word;
 }
 
 .request-card__status {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  align-self: flex-start;
   border-radius: 999px;
   padding: 8px 12px;
   font-size: 0.85rem;
   font-weight: 700;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .request-card__status--pending {
@@ -162,7 +171,11 @@
   }
 
   .request-card__top {
-    flex-direction: column;
+    flex-direction: row;
     align-items: flex-start;
+  }
+
+  .request-card__status {
+    margin-top: 2px;
   }
 }

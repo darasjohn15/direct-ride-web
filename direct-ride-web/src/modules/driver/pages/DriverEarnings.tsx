@@ -83,7 +83,6 @@ export default function DriverEarnings() {
     <div className="driver-earnings">
       <header className="driver-earnings__header">
         <div>
-          <p className="driver-earnings__eyebrow">Driver</p>
           <h1 className="driver-earnings__title">Earnings</h1>
           <p className="driver-earnings__subtitle">This week&apos;s performance.</p>
         </div>
