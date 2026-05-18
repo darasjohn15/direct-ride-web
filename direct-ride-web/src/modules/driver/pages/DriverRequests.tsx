@@ -1,4 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  getRideRequestStatusValue,
+  rideRequestService,
+  RideRequestStatusValue,
+  type RideRequest as ApiRideRequest,
+} from '../../../services/rideRequestService';
+import { getToken, getUserIdFromToken } from '../../../types/auth';
+import { userService } from '../../../services/userService';
 import RequestCard, {
   type RideRequest,
   type RequestStatus,
@@ -6,64 +14,6 @@ import RequestCard, {
 import './DriverRequests.css';
 
 type SortOption = 'pickup-time' | 'newest';
-
-const initialRequests: RideRequest[] = [
-  {
-    id: 1,
-    riderName: 'Jordan Lee',
-    pickupLocation: 'Downtown Atlanta',
-    dropoffLocation: 'Midtown Atlanta',
-    pickupTime: '9:00 AM',
-    createdAt: '2026-03-29T08:15:00',
-    distanceMiles: 4.8,
-    estimatedFare: 18.5,
-    status: 'pending',
-  },
-  {
-    id: 2,
-    riderName: 'Avery Smith',
-    pickupLocation: 'Buckhead',
-    dropoffLocation: 'Hartsfield-Jackson Airport',
-    pickupTime: '11:30 AM',
-    createdAt: '2026-03-29T07:45:00',
-    distanceMiles: 16.2,
-    estimatedFare: 34.25,
-    status: 'accepted',
-  },
-  {
-    id: 3,
-    riderName: 'Chris Thomas',
-    pickupLocation: 'Georgia Tech',
-    dropoffLocation: 'Atlantic Station',
-    pickupTime: '1:15 PM',
-    createdAt: '2026-03-28T18:10:00',
-    distanceMiles: 2.9,
-    estimatedFare: 12.0,
-    status: 'denied',
-  },
-  {
-    id: 4,
-    riderName: 'Morgan Price',
-    pickupLocation: 'Ponce City Market',
-    dropoffLocation: 'Little Five Points',
-    pickupTime: '3:45 PM',
-    createdAt: '2026-03-27T16:25:00',
-    distanceMiles: 5.5,
-    estimatedFare: 19.75,
-    status: 'completed',
-  },
-  {
-    id: 5,
-    riderName: 'Taylor Brooks',
-    pickupLocation: 'West End',
-    dropoffLocation: 'Decatur',
-    pickupTime: '5:00 PM',
-    createdAt: '2026-03-29T09:20:00',
-    distanceMiles: 9.4,
-    estimatedFare: 26.8,
-    status: 'pending',
-  },
-];
 
 const tabs: { label: string; value: RequestStatus }[] = [
   { label: 'Pending', value: 'pending' },
@@ -92,6 +42,8 @@ const emptyStateCopy: Record<RequestStatus, { title: string; body: string }> = {
 };
 
 function parsePickupTime(time: string): number {
+  if (!time.includes(':')) return Number.MAX_SAFE_INTEGER;
+
   const [clock, period] = time.split(' ');
   const [rawHours, minutes] = clock.split(':').map(Number);
   let hours = rawHours;
@@ -102,10 +54,85 @@ function parsePickupTime(time: string): number {
   return hours * 60 + minutes;
 }
 
+function formatPickupTime(dateTime?: string): string {
+  if (!dateTime) return 'Time unavailable';
+
+  return new Date(dateTime).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function getPersonName(
+  directName: string | undefined,
+  nestedPerson: { firstName: string; lastName: string } | undefined
+): string {
+  if (directName) return directName;
+  if (nestedPerson) return `${nestedPerson.firstName} ${nestedPerson.lastName}`;
+  return 'Rider';
+}
+
+function mapRequestStatus(status: ApiRideRequest['status']): RequestStatus {
+  const value = getRideRequestStatusValue(status);
+
+  if (value === RideRequestStatusValue.Accepted) return 'accepted';
+  if (value === RideRequestStatusValue.Declined || value === RideRequestStatusValue.Cancelled) {
+    return 'denied';
+  }
+  if (value === RideRequestStatusValue.Completed) return 'completed';
+
+  return 'pending';
+}
+
+function mapApiRideRequest(request: ApiRideRequest): RideRequest {
+  const slotStartTime = request.slotStartTime ?? request.availabilitySlot?.startTime;
+
+  return {
+    id: request.id,
+    riderName: getPersonName(request.riderName, request.rider),
+    pickupLocation: request.pickupLocation,
+    dropoffLocation: request.dropoffLocation,
+    pickupTime: formatPickupTime(slotStartTime),
+    createdAt: request.createdAt,
+    distanceMiles: 0,
+    estimatedFare: request.fare ?? 0,
+    status: mapRequestStatus(request.status),
+  };
+}
+
 export default function DriverRequests() {
   const [activeTab, setActiveTab] = useState<RequestStatus>('pending');
   const [sortBy, setSortBy] = useState<SortOption>('pickup-time');
-  const [requests, setRequests] = useState<RideRequest[]>(initialRequests);
+  const [requests, setRequests] = useState<RideRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function loadRequests() {
+      try {
+        setIsLoading(true);
+        setError('');
+
+        const token = getToken();
+        let driverId = token ? getUserIdFromToken(token) : null;
+
+        if (!driverId) {
+          const currentUser = await userService.getCurrentUser();
+          driverId = currentUser.id;
+        }
+
+        const rideRequests = await rideRequestService.getRideRequests({ driverId });
+        setRequests(rideRequests.map(mapApiRideRequest));
+      } catch {
+        setRequests([]);
+        setError('Unable to load ride requests.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadRequests();
+  }, []);
 
   const filteredRequests = useMemo(() => {
     const next = requests.filter((request) => request.status === activeTab);
@@ -123,28 +150,31 @@ export default function DriverRequests() {
     return next;
   }, [activeTab, requests, sortBy]);
 
-  const handleAccept = (id: number) => {
-    setRequests((prev) =>
-      prev.map((request) =>
-        request.id === id ? { ...request, status: 'accepted' } : request
-      )
-    );
+  const updateRequestStatus = async (id: string, status: RideRequestStatusValue) => {
+    setError('');
+
+    try {
+      const updatedRequest = await rideRequestService.updateRideRequestStatus(id, status);
+      setRequests((prev) =>
+        prev.map((request) =>
+          request.id === id ? mapApiRideRequest(updatedRequest) : request
+        )
+      );
+    } catch {
+      setError('Unable to update ride request.');
+    }
   };
 
-  const handleDeny = (id: number) => {
-    setRequests((prev) =>
-      prev.map((request) =>
-        request.id === id ? { ...request, status: 'denied' } : request
-      )
-    );
+  const handleAccept = (id: string) => {
+    updateRequestStatus(id, RideRequestStatusValue.Accepted);
   };
 
-  const handleCancel = (id: number) => {
-    setRequests((prev) =>
-      prev.map((request) =>
-        request.id === id ? { ...request, status: 'denied' } : request
-      )
-    );
+  const handleDeny = (id: string) => {
+    updateRequestStatus(id, RideRequestStatusValue.Declined);
+  };
+
+  const handleCancel = (id: string) => {
+    updateRequestStatus(id, RideRequestStatusValue.Cancelled);
   };
 
   return (
@@ -190,7 +220,17 @@ export default function DriverRequests() {
       </section>
 
       <section className="requests-list">
-        {filteredRequests.length > 0 ? (
+        {error ? (
+          <div className="requests-empty-state">
+            <h3>Requests unavailable</h3>
+            <p>{error}</p>
+          </div>
+        ) : isLoading ? (
+          <div className="requests-empty-state">
+            <h3>Loading requests</h3>
+            <p>Checking your ride requests.</p>
+          </div>
+        ) : filteredRequests.length > 0 ? (
           filteredRequests.map((request) => (
             <RequestCard
               key={request.id}

@@ -1,4 +1,8 @@
 import { useMemo, useState } from 'react';
+import { availabilityService, type AvailabilitySlot } from '../../../services/availabilityService';
+import { rideRequestService } from '../../../services/rideRequestService';
+import { getToken, getUserIdFromToken } from '../../../types/auth';
+import { userService } from '../../../services/userService';
 import AvailableDriverCard, {
   type AvailableDriver,
 } from '../components/AvailableDriverCard';
@@ -29,32 +33,41 @@ function formatDateForSummary(date: string): string {
   });
 }
 
-const mockAvailableDrivers: AvailableDriver[] = [
-  {
-    id: 1,
-    name: 'Marcus Johnson',
-    vehicle: 'Black Toyota Camry',
-    rating: 4.9,
-    estimatedArrival: '12 mins',
-    baseFare: 8.5,
-  },
-  {
-    id: 2,
-    name: 'Jordan Lee',
-    vehicle: 'Silver Honda Accord',
-    rating: 4.8,
-    estimatedArrival: '16 mins',
-    baseFare: 9.25,
-  },
-  {
-    id: 3,
-    name: 'Taylor Brooks',
-    vehicle: 'White Nissan Altima',
-    rating: 4.7,
-    estimatedArrival: '19 mins',
-    baseFare: 7.95,
-  },
-];
+function createDateTime(date: string, time: string): Date {
+  return new Date(`${date}T${time}:00`);
+}
+
+function getDayRange(date: string) {
+  const start = new Date(`${date}T00:00:00`);
+  const end = new Date(`${date}T23:59:59`);
+
+  return {
+    startTimeFrom: start.toISOString(),
+    startTimeTo: end.toISOString(),
+  };
+}
+
+function getDriverName(slot: AvailabilitySlot): string {
+  if (slot.driverName) return slot.driverName;
+  if (slot.driver) return `${slot.driver.firstName} ${slot.driver.lastName}`;
+  return 'DirectRide Driver';
+}
+
+function getBaseFare(slot: AvailabilitySlot): number {
+  return slot.driver?.baseFare ?? 0;
+}
+
+function mapAvailabilityToDriver(slot: AvailabilitySlot): AvailableDriver {
+  return {
+    id: slot.driverId,
+    availabilitySlotId: slot.id,
+    name: getDriverName(slot),
+    vehicle: 'DirectRide vehicle',
+    rating: 5,
+    estimatedArrival: 'Available',
+    baseFare: getBaseFare(slot),
+  };
+}
 
 export default function RiderBookTrip() {
   const [formData, setFormData] = useState<TripForm>({
@@ -69,6 +82,8 @@ export default function RiderBookTrip() {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [error, setError] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const minDate = useMemo(() => getTomorrowDateInputValue(), []);
 
@@ -84,7 +99,7 @@ export default function RiderBookTrip() {
     setError('');
   };
 
-  const handleSearchDrivers = () => {
+  const handleSearchDrivers = async () => {
     setError('');
     setConfirmationMessage('');
     setSelectedDriver(null);
@@ -101,12 +116,31 @@ export default function RiderBookTrip() {
       return;
     }
 
-    // Mock search result
-    setDrivers(mockAvailableDrivers);
-    setSearchPerformed(true);
+    setIsSearching(true);
+
+    try {
+      const pickupDateTime = createDateTime(formData.date, formData.pickupTime);
+      const slots = await availabilityService.getAvailability(getDayRange(formData.date));
+      const matchingSlots = slots.filter((slot) => {
+        const startTime = new Date(slot.startTime).getTime();
+        const endTime = new Date(slot.endTime).getTime();
+        const pickupTime = pickupDateTime.getTime();
+
+        return startTime <= pickupTime && pickupTime <= endTime && !slot.isBooked;
+      });
+
+      setDrivers(matchingSlots.map(mapAvailabilityToDriver));
+      setSearchPerformed(true);
+    } catch {
+      setDrivers([]);
+      setSearchPerformed(true);
+      setError('Unable to search available drivers.');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  const handleSubmitRequest = () => {
+  const handleSubmitRequest = async () => {
     setError('');
     setConfirmationMessage('');
 
@@ -120,11 +154,39 @@ export default function RiderBookTrip() {
       return;
     }
 
-    setConfirmationMessage(
-      `Your request has been sent to ${selectedDriver.name} for ${formatDateForSummary(
-        formData.date
-      )} at ${formData.pickupTime}.`
-    );
+    setIsSubmitting(true);
+
+    try {
+      const token = getToken();
+      let riderId = token ? getUserIdFromToken(token) : null;
+
+      if (!riderId) {
+        const currentUser = await userService.getCurrentUser();
+        riderId = currentUser.id;
+      }
+
+      await rideRequestService.createRideRequest({
+        riderId,
+        driverId: selectedDriver.id,
+        availabilitySlotId: selectedDriver.availabilitySlotId,
+        pickupLocation: formData.pickupLocation,
+        dropoffLocation: formData.dropoffLocation,
+      });
+
+      setConfirmationMessage(
+        `Your request has been sent to ${selectedDriver.name} for ${formatDateForSummary(
+          formData.date
+        )} at ${formData.pickupTime}.`
+      );
+      setDrivers((prev) =>
+        prev.filter((driver) => driver.availabilitySlotId !== selectedDriver.availabilitySlotId)
+      );
+      setSelectedDriver(null);
+    } catch {
+      setError('Unable to submit your ride request.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -198,8 +260,9 @@ export default function RiderBookTrip() {
               type="button"
               className="book-trip-button book-trip-button--primary"
               onClick={handleSearchDrivers}
+              disabled={isSearching}
             >
-              Search Drivers
+              {isSearching ? 'Searching...' : 'Search Drivers'}
             </button>
 
             {error ? <p className="form-error">{error}</p> : null}
@@ -242,8 +305,9 @@ export default function RiderBookTrip() {
             type="button"
             className="book-trip-button book-trip-button--dark"
             onClick={handleSubmitRequest}
+            disabled={isSubmitting}
           >
-            Submit Request
+            {isSubmitting ? 'Submitting...' : 'Submit Request'}
           </button>
 
           {confirmationMessage ? (

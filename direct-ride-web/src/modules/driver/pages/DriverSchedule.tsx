@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { availabilityService } from '../../../services/availabilityService';
+import { getToken, getUserIdFromToken } from '../../../types/auth';
+import { userService } from '../../../services/userService';
 import './DriverSchedule.css';
 
 type AvailabilitySlot = {
-  id: number;
+  id: string;
   startTime: string;
   endTime: string;
 };
@@ -29,6 +32,10 @@ function getTomorrow(): Date {
   return date;
 }
 
+function isBeforeDate(date: Date, minimumDate: Date): boolean {
+  return toInputDateValue(date) < toInputDateValue(minimumDate);
+}
+
 function timeStringToMinutes(time: string): number {
   const [hours, minutes] = time.split(':').map(Number);
   return hours * 60 + minutes;
@@ -45,6 +52,32 @@ function formatTimeForDisplay(time: string): string {
   const suffix = hours >= 12 ? 'PM' : 'AM';
   const displayHour = hours % 12 === 0 ? 12 : hours % 12;
   return `${displayHour}:${`${minutes}`.padStart(2, '0')} ${suffix}`;
+}
+
+function toTimeInputValue(dateTime: string): string {
+  const date = new Date(dateTime);
+  return `${`${date.getHours()}`.padStart(2, '0')}:${`${date.getMinutes()}`.padStart(2, '0')}`;
+}
+
+function combineDateAndTime(date: Date, time: string): string {
+  const [hours, minutes] = time.split(':').map(Number);
+  const nextDate = new Date(date);
+  nextDate.setHours(hours, minutes, 0, 0);
+  return nextDate.toISOString();
+}
+
+function getDayAvailabilityFilters(date: Date, driverId: string) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+
+  return {
+    driverId,
+    startTimeFrom: start.toISOString(),
+    startTimeTo: end.toISOString(),
+  };
 }
 
 function mergeOverlappingSlots(slots: AvailabilitySlot[]): AvailabilitySlot[] {
@@ -72,26 +105,13 @@ function mergeOverlappingSlots(slots: AvailabilitySlot[]): AvailabilitySlot[] {
   }
 
   merged.push(current);
-  return merged.map((slot, index) => ({
-    ...slot,
-    id: index + 1,
-  }));
+  return merged;
 }
 
 export default function DriverSchedule() {
   const [selectedDate, setSelectedDate] = useState<Date>(getTomorrow());
-  const [slots, setSlots] = useState<AvailabilitySlot[]>([
-    {
-      id: 1,
-      startTime: '08:00',
-      endTime: '12:00',
-    },
-    {
-      id: 2,
-      startTime: '14:00',
-      endTime: '18:00',
-    },
-  ]);
+  const [driverId, setDriverId] = useState('');
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newSlot, setNewSlot] = useState({
@@ -99,14 +119,55 @@ export default function DriverSchedule() {
     endTime: '',
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
+  const minimumScheduleDate = getTomorrow();
+  const isAtMinimumScheduleDate = toInputDateValue(selectedDate) <= toInputDateValue(minimumScheduleDate);
   const mergedSlots = useMemo(() => mergeOverlappingSlots(slots), [slots]);
+
+  useEffect(() => {
+    async function loadAvailability() {
+      try {
+        setIsLoading(true);
+        setError('');
+
+        const token = getToken();
+        let currentDriverId = token ? getUserIdFromToken(token) : null;
+
+        if (!currentDriverId) {
+          const currentUser = await userService.getCurrentUser();
+          currentDriverId = currentUser.id;
+        }
+
+        setDriverId(currentDriverId);
+
+        const availability = await availabilityService.getAvailability(
+          getDayAvailabilityFilters(selectedDate, currentDriverId)
+        );
+
+        setSlots(availability.map((slot) => ({
+          id: slot.id,
+          startTime: toTimeInputValue(slot.startTime),
+          endTime: toTimeInputValue(slot.endTime),
+        })));
+      } catch {
+        setSlots([]);
+        setError('Unable to load availability.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadAvailability();
+  }, [selectedDate]);
 
   const handlePreviousDay = () => {
     setSelectedDate((prev) => {
       const updated = new Date(prev);
       updated.setDate(updated.getDate() - 1);
-      return updated;
+      updated.setHours(0, 0, 0, 0);
+      return isBeforeDate(updated, minimumScheduleDate) ? minimumScheduleDate : updated;
     });
   };
 
@@ -114,6 +175,7 @@ export default function DriverSchedule() {
     setSelectedDate((prev) => {
       const updated = new Date(prev);
       updated.setDate(updated.getDate() + 1);
+      updated.setHours(0, 0, 0, 0);
       return updated;
     });
   };
@@ -126,7 +188,7 @@ export default function DriverSchedule() {
 
     const nextDate = new Date(year, month - 1, day);
     nextDate.setHours(0, 0, 0, 0);
-    setSelectedDate(nextDate);
+    setSelectedDate(isBeforeDate(nextDate, minimumScheduleDate) ? minimumScheduleDate : nextDate);
   };
 
   const handleNewSlotChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,7 +199,7 @@ export default function DriverSchedule() {
     }));
   };
 
-  const handleAddAvailability = () => {
+  const handleAddAvailability = async () => {
     setError('');
 
     if (!newSlot.startTime || !newSlot.endTime) {
@@ -153,24 +215,47 @@ export default function DriverSchedule() {
       return;
     }
 
-    const updatedSlots = mergeOverlappingSlots([
-      ...slots,
-      {
-        id: Date.now(),
-        startTime: newSlot.startTime,
-        endTime: newSlot.endTime,
-      },
-    ]);
+    if (!driverId) {
+      setError('Missing authenticated driver.');
+      return;
+    }
 
-    setSlots(updatedSlots);
-    setNewSlot({
-      startTime: '',
-      endTime: '',
-    });
-    setShowAddForm(false);
+    if (isBeforeDate(selectedDate, minimumScheduleDate)) {
+      setError('Availability can only be added for future dates.');
+      setSelectedDate(minimumScheduleDate);
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const createdSlot = await availabilityService.createAvailability({
+        driverId,
+        startTime: combineDateAndTime(selectedDate, newSlot.startTime),
+        endTime: combineDateAndTime(selectedDate, newSlot.endTime),
+      });
+
+      setSlots((prev) => mergeOverlappingSlots([
+        ...prev,
+        {
+          id: createdSlot.id,
+          startTime: toTimeInputValue(createdSlot.startTime),
+          endTime: toTimeInputValue(createdSlot.endTime),
+        },
+      ]));
+      setNewSlot({
+        startTime: '',
+        endTime: '',
+      });
+      setShowAddForm(false);
+    } catch {
+      setError('Unable to save availability.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteSlot = (id: number) => {
+  const handleDeleteSlot = (id: string) => {
     setSlots((prev) => prev.filter((slot) => slot.id !== id));
   };
 
@@ -200,6 +285,7 @@ export default function DriverSchedule() {
             type="button"
             className="date-selector__arrow"
             onClick={handlePreviousDay}
+            disabled={isAtMinimumScheduleDate}
             aria-label="Previous day"
           >
             ←
@@ -211,6 +297,7 @@ export default function DriverSchedule() {
               type="date"
               className="date-selector__input"
               value={toInputDateValue(selectedDate)}
+              min={toInputDateValue(minimumScheduleDate)}
               onChange={handleDateChange}
             />
           </div>
@@ -274,13 +361,19 @@ export default function DriverSchedule() {
                 type="button"
                 className="schedule-button schedule-button--primary"
                 onClick={handleAddAvailability}
+                disabled={isSaving}
               >
-                Save Availability
+                {isSaving ? 'Saving...' : 'Save Availability'}
               </button>
             </div>
           ) : null}
 
-          {mergedSlots.length > 0 ? (
+          {isLoading ? (
+            <div className="empty-state">
+              <h3>Loading availability</h3>
+              <p>Checking your schedule for this day.</p>
+            </div>
+          ) : mergedSlots.length > 0 ? (
             <div className="availability-list">
               {mergedSlots.map((slot) => (
                 <div className="availability-card" key={slot.id}>

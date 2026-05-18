@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearToken } from '../../../types/auth';
+import { clearToken, getToken, getUserIdFromToken } from '../../../types/auth';
+import { getUserRoleLabel, userService } from '../../../services/userService';
 import './DriverProfile.css';
 
 type DriverUser = {
@@ -12,39 +13,97 @@ type DriverUser = {
   baseFare: string;
 };
 
-const mockDriver: DriverUser = {
-  firstName: 'Marcus',
-  lastName: 'Johnson',
-  email: 'marcus@directride.com',
-  phone: '(404) 555-0128',
-  role: 'Driver',
-  baseFare: '8.50',
-};
+// const mockDriver: DriverUser = {
+//   firstName: 'Marcus',
+//   lastName: 'Johnson',
+//   email: 'marcus@directride.com',
+//   phone: '(404) 555-0128',
+//   role: 'Driver',
+//   baseFare: '8.50',
+// };
 
 export default function DriverProfile() {
   const navigate = useNavigate();
 
-  const [user, setUser] = useState<DriverUser>(mockDriver);
+  const [user, setUser] = useState<DriverUser>();
+  const [userId, setUserId] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [settingsError, setSettingsError] = useState('');
   const [fareSavedMessage, setFareSavedMessage] = useState('');
-  const [showDeactivateMessage, setShowDeactivateMessage] = useState(false);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        setIsLoading(true);
+        setLoadError('');
+
+        const token = getToken();
+        const userId = token ? getUserIdFromToken(token) : null;
+
+        if (!userId) {
+          throw new Error('Missing authenticated user.');
+        }
+
+        const data = await userService.getUserById(userId);
+
+        setUserId(userId);
+        setUser({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phoneNumber,
+          role: getUserRoleLabel(data.role),
+          baseFare: data.baseFare.toFixed(2),
+        });
+      } catch {
+        setLoadError('Unable to load profile.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadUser();
+  }, []);
 
   const initials = useMemo(() => {
+    if (!user) return '';
     return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
-  }, [user.firstName, user.lastName]);
+  }, [user]);
 
   const handleBaseFareChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
 
-    setUser((prev) => ({
+    setUser((prev) => (prev ? {
       ...prev,
       baseFare: value,
-    }));
+    } : prev));
 
     setFareSavedMessage('');
+    setSettingsError('');
   };
 
-  const handleSaveBaseFare = () => {
-    setFareSavedMessage('Base fare updated.');
+  const handleSaveBaseFare = async () => {
+    setSettingsError('');
+    setFareSavedMessage('');
+
+    const baseFare = Number(user?.baseFare);
+
+    if (!userId || Number.isNaN(baseFare) || baseFare < 0) {
+      setSettingsError('Enter a valid base fare.');
+      return;
+    }
+
+    try {
+      const updatedUser = await userService.patchUser(userId, { baseFare });
+      setUser((prev) => prev ? {
+        ...prev,
+        baseFare: updatedUser.baseFare.toFixed(2),
+      } : prev);
+      setFareSavedMessage('Base fare updated.');
+    } catch {
+      setSettingsError('Unable to update base fare.');
+    }
   };
 
   const handleLogout = () => {
@@ -52,9 +111,13 @@ export default function DriverProfile() {
     navigate('/login');
   };
 
-  const handleDeactivateAccount = () => {
-    setShowDeactivateMessage(true);
-  };
+  if (isLoading) {
+    return <div className="driver-profile">Loading profile...</div>;
+  }
+
+  if (loadError || !user) {
+    return <div className="driver-profile">{loadError || 'Profile unavailable.'}</div>;
+  }
 
   return (
     <div className="driver-profile">
@@ -143,6 +206,9 @@ export default function DriverProfile() {
             {fareSavedMessage ? (
               <p className="settings-group__message">{fareSavedMessage}</p>
             ) : null}
+            {settingsError ? (
+              <p className="settings-group__message">{settingsError}</p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -161,20 +227,14 @@ export default function DriverProfile() {
             Log Out
           </button>
 
-          <button
+          {/* <button
             type="button"
             className="profile-button profile-button--danger"
             onClick={handleDeactivateAccount}
           >
             Deactivate Account
-          </button>
+          </button> */}
         </div>
-
-        {showDeactivateMessage ? (
-          <p className="deactivate-message">
-            Account deactivation flow not connected yet.
-          </p>
-        ) : null}
       </section>
     </div>
   );

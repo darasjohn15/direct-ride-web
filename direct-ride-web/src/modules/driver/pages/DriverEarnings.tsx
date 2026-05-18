@@ -1,52 +1,43 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  earningsService,
+  type WeeklyEarnings,
+} from '../../../services/earningsService';
+import { userService } from '../../../services/userService';
+import { getToken, getUserIdFromToken } from '../../../types/auth';
 import './DriverEarnings.css';
 
-type DailyEarning = {
-  dayLabel: string;
-  amount: number;
-  rides: number;
-};
+function toInputDateValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
-type WeeklyEarnings = {
-  weekStart: string;
-  weekEnd: string;
-  totalEarnings: number;
-  totalRides: number;
-  days: DailyEarning[];
-};
+function getWeekStart(date: Date): Date {
+  const weekStart = new Date(date);
+  const day = weekStart.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
 
-const weeklyEarningsData: WeeklyEarnings[] = [
-  {
-    weekStart: '2026-03-23',
-    weekEnd: '2026-03-29',
-    totalEarnings: 684.75,
-    totalRides: 28,
-    days: [
-      { dayLabel: 'Monday', amount: 92.5, rides: 4 },
-      { dayLabel: 'Tuesday', amount: 118.25, rides: 5 },
-      { dayLabel: 'Wednesday', amount: 84.0, rides: 3 },
-      { dayLabel: 'Thursday', amount: 136.5, rides: 6 },
-      { dayLabel: 'Friday', amount: 101.75, rides: 4 },
-      { dayLabel: 'Saturday', amount: 98.25, rides: 4 },
-      { dayLabel: 'Sunday', amount: 53.5, rides: 2 },
-    ],
-  },
-  {
-    weekStart: '2026-03-30',
-    weekEnd: '2026-04-05',
-    totalEarnings: 0,
-    totalRides: 0,
-    days: [
-      { dayLabel: 'Monday', amount: 0, rides: 0 },
-      { dayLabel: 'Tuesday', amount: 0, rides: 0 },
-      { dayLabel: 'Wednesday', amount: 0, rides: 0 },
-      { dayLabel: 'Thursday', amount: 0, rides: 0 },
-      { dayLabel: 'Friday', amount: 0, rides: 0 },
-      { dayLabel: 'Saturday', amount: 0, rides: 0 },
-      { dayLabel: 'Sunday', amount: 0, rides: 0 },
-    ],
-  },
-];
+  weekStart.setDate(weekStart.getDate() + offset);
+  weekStart.setHours(0, 0, 0, 0);
+
+  return weekStart;
+}
+
+function addDays(date: Date, days: number): Date {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function formatDayLabel(date: string, fallback?: string): string {
+  if (fallback) return fallback;
+
+  return new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
+    weekday: 'long',
+  });
+}
 
 function formatWeekRange(start: string, end: string): string {
   const startDate = new Date(`${start}T00:00:00`);
@@ -66,17 +57,76 @@ function formatWeekRange(start: string, end: string): string {
 }
 
 export default function DriverEarnings() {
-  const [weekIndex, setWeekIndex] = useState(0);
+  const [selectedWeekStart, setSelectedWeekStart] = useState(() => getWeekStart(new Date()));
+  const [driverId, setDriverId] = useState('');
+  const [currentWeek, setCurrentWeek] = useState<WeeklyEarnings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const currentWeek = useMemo(() => weeklyEarningsData[weekIndex], [weekIndex]);
-  const hasEarnings = currentWeek.totalEarnings > 0;
+  useEffect(() => {
+    async function loadDriverId() {
+      try {
+        const token = getToken();
+        let currentDriverId = token ? getUserIdFromToken(token) : null;
+
+        if (!currentDriverId) {
+          const currentUser = await userService.getCurrentUser();
+          currentDriverId = currentUser.id;
+        }
+
+        setDriverId(currentDriverId);
+      } catch {
+        setError('Unable to load driver profile.');
+        setIsLoading(false);
+      }
+    }
+
+    loadDriverId();
+  }, []);
+
+  useEffect(() => {
+    if (!driverId) return;
+
+    async function loadEarnings() {
+      try {
+        setIsLoading(true);
+        setError('');
+
+        const earnings = await earningsService.getWeeklyEarnings(
+          driverId,
+          toInputDateValue(selectedWeekStart)
+        );
+
+        setCurrentWeek(earnings);
+      } catch {
+        setCurrentWeek(null);
+        setError('Unable to load earnings.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadEarnings();
+  }, [driverId, selectedWeekStart]);
+
+  const displayedWeek = useMemo(() => {
+    const weekEnd = addDays(selectedWeekStart, 6);
+
+    return {
+      weekStart: toInputDateValue(selectedWeekStart),
+      weekEnd: toInputDateValue(weekEnd),
+    };
+  }, [selectedWeekStart]);
+
+  const isCurrentWeek = toInputDateValue(selectedWeekStart) === toInputDateValue(getWeekStart(new Date()));
+  const hasEarnings = Boolean(currentWeek && currentWeek.totalEarnings > 0);
 
   const handlePreviousWeek = () => {
-    setWeekIndex((prev) => Math.max(prev - 1, 0));
+    setSelectedWeekStart((prev) => addDays(prev, -7));
   };
 
   const handleNextWeek = () => {
-    setWeekIndex((prev) => Math.min(prev + 1, weeklyEarningsData.length - 1));
+    setSelectedWeekStart((prev) => addDays(prev, 7));
   };
 
   return (
@@ -103,7 +153,6 @@ export default function DriverEarnings() {
             type="button"
             className="week-selector__arrow"
             onClick={handlePreviousWeek}
-            disabled={weekIndex === 0}
             aria-label="Previous week"
           >
             ←
@@ -111,7 +160,10 @@ export default function DriverEarnings() {
 
           <div className="week-selector__center">
             <p className="week-selector__label">
-              {formatWeekRange(currentWeek.weekStart, currentWeek.weekEnd)}
+              {formatWeekRange(
+                currentWeek?.weekStart ?? displayedWeek.weekStart,
+                currentWeek?.weekEnd ?? displayedWeek.weekEnd
+              )}
             </p>
           </div>
 
@@ -119,7 +171,7 @@ export default function DriverEarnings() {
             type="button"
             className="week-selector__arrow"
             onClick={handleNextWeek}
-            disabled={weekIndex === weeklyEarningsData.length - 1}
+            disabled={isCurrentWeek}
             aria-label="Next week"
           >
             →
@@ -128,7 +180,17 @@ export default function DriverEarnings() {
       </section>
 
       <section className="earnings-summary-card">
-        {hasEarnings ? (
+        {isLoading ? (
+          <div className="earnings-empty-state">
+            <h3>Loading earnings...</h3>
+            <p>Your weekly totals are being refreshed.</p>
+          </div>
+        ) : error ? (
+          <div className="earnings-empty-state">
+            <h3>Earnings unavailable</h3>
+            <p>{error}</p>
+          </div>
+        ) : hasEarnings && currentWeek ? (
           <>
             <p className="earnings-summary-card__label">Total Earnings</p>
             <h2 className="earnings-summary-card__amount">
@@ -159,16 +221,23 @@ export default function DriverEarnings() {
           </div>
         </div>
 
-        {hasEarnings ? (
+        {isLoading ? (
+          <div className="earnings-empty-state earnings-empty-state--secondary">
+            <h3>Loading daily breakdown...</h3>
+            <p>Your seven-day breakdown is on the way.</p>
+          </div>
+        ) : hasEarnings && currentWeek ? (
           <div className="daily-breakdown">
             {currentWeek.days.map((day) => (
-              <div className="daily-breakdown__row" key={day.dayLabel}>
+              <div className="daily-breakdown__row" key={day.date}>
                 <div className="daily-breakdown__left">
-                  <p className="daily-breakdown__day">{day.dayLabel}</p>
-                  <p className="daily-breakdown__rides">{day.rides} rides</p>
+                  <p className="daily-breakdown__day">
+                    {formatDayLabel(day.date, day.dayLabel)}
+                  </p>
+                  <p className="daily-breakdown__rides">{day.totalRides} rides</p>
                 </div>
 
-                <p className="daily-breakdown__amount">${day.amount.toFixed(2)}</p>
+                <p className="daily-breakdown__amount">${day.totalEarnings.toFixed(2)}</p>
               </div>
             ))}
           </div>

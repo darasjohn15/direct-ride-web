@@ -1,17 +1,29 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  getRideRequestStatusValue,
+  RideRequestStatusValue,
+  rideRequestService,
+  type RideRequest as ApiRideRequest,
+} from '../../../services/rideRequestService';
+import { availabilityService, type AvailabilitySlot as ApiAvailabilitySlot } from '../../../services/availabilityService';
+import { earningsService } from '../../../services/earningsService';
+import { userService } from '../../../services/userService';
+import { getToken, getUserIdFromToken } from '../../../types/auth';
 import './DriverDashboard.css';
 
 type Ride = {
-  id: number;
+  id: string;
   riderName: string;
   pickup: string;
   dropoff: string;
   time: string;
-  status: 'Scheduled' | 'In Progress' | 'Completed';
+  status: 'Pending' | 'Scheduled' | 'Completed' | 'Cancelled';
+  sortTime: number;
 };
 
 type PendingRequest = {
-  id: number;
+  id: string;
   riderName: string;
   pickup: string;
   dropoff: string;
@@ -19,86 +31,209 @@ type PendingRequest = {
 };
 
 type AvailabilitySlot = {
-  id: number;
+  id: string;
   startTime: string;
   endTime: string;
 };
 
-const mockDriver = {
-  firstName: 'Marcus',
-};
+function getDayRange(date: Date) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
 
-const todaysEarnings = 184.5;
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
 
-const todaysRides: Ride[] = [
-  {
-    id: 1,
-    riderName: 'Jordan',
-    pickup: 'Downtown Atlanta',
-    dropoff: 'Midtown Atlanta',
-    time: '9:00 AM',
-    status: 'Completed',
-  },
-  {
-    id: 2,
-    riderName: 'Avery',
-    pickup: 'Buckhead',
-    dropoff: 'Hartsfield-Jackson Airport',
-    time: '11:30 AM',
-    status: 'In Progress',
-  },
-  {
-    id: 3,
-    riderName: 'Taylor',
-    pickup: 'West End',
-    dropoff: 'Decatur',
-    time: '2:00 PM',
-    status: 'Scheduled',
-  },
-];
+  return {
+    from: start.toISOString(),
+    to: end.toISOString(),
+  };
+}
 
-const pendingRequests: PendingRequest[] = [
-  {
-    id: 101,
-    riderName: 'Chris',
-    pickup: 'Atlantic Station',
-    dropoff: 'Georgia Tech',
-    requestedTime: '4:15 PM',
-  },
-  {
-    id: 102,
-    riderName: 'Morgan',
-    pickup: 'Ponce City Market',
-    dropoff: 'Little Five Points',
-    requestedTime: '5:00 PM',
-  },
-  {
-    id: 103,
-    riderName: 'Skyler',
-    pickup: 'Inman Park',
-    dropoff: 'Virginia-Highland',
-    requestedTime: '6:10 PM',
-  },
-];
+function getTomorrow(): Date {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow;
+}
 
-const tomorrowAvailability: AvailabilitySlot[] = [
-  {
-    id: 1,
-    startTime: '8:00 AM',
-    endTime: '12:00 PM',
-  },
-  {
-    id: 2,
-    startTime: '2:00 PM',
-    endTime: '6:00 PM',
-  },
-];
+function toInputDateValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
-// To test the empty state later, change this to []
-// const tomorrowAvailability: AvailabilitySlot[] = [];
+function formatTime(dateTime?: string): string {
+  if (!dateTime) return 'Time unavailable';
+
+  return new Date(dateTime).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function isSameLocalDay(dateTime: string | undefined, date: Date): boolean {
+  if (!dateTime) return false;
+
+  const value = new Date(dateTime);
+  return (
+    value.getFullYear() === date.getFullYear() &&
+    value.getMonth() === date.getMonth() &&
+    value.getDate() === date.getDate()
+  );
+}
+
+function getPersonName(
+  directName: string | undefined,
+  nestedPerson: { firstName: string; lastName: string } | undefined
+): string {
+  if (directName) return directName;
+  if (nestedPerson) return `${nestedPerson.firstName} ${nestedPerson.lastName}`;
+  return 'Rider';
+}
+
+function getRequestSlotStart(request: ApiRideRequest): string | undefined {
+  return request.slotStartTime ?? request.availabilitySlot?.startTime;
+}
+
+function mapRide(request: ApiRideRequest): Ride {
+  const status = getRideRequestStatusValue(request.status);
+  const slotStartTime = getRequestSlotStart(request);
+
+  return {
+    id: request.id,
+    riderName: getPersonName(request.riderName, request.rider),
+    pickup: request.pickupLocation,
+    dropoff: request.dropoffLocation,
+    time: formatTime(slotStartTime),
+    status: getRideStatusLabel(status),
+    sortTime: slotStartTime ? new Date(slotStartTime).getTime() : Number.MAX_SAFE_INTEGER,
+  };
+}
+
+function getRideStatusLabel(status: RideRequestStatusValue): Ride['status'] {
+  if (status === RideRequestStatusValue.Pending) return 'Pending';
+  if (status === RideRequestStatusValue.Completed) return 'Completed';
+  if (status === RideRequestStatusValue.Cancelled) return 'Cancelled';
+
+  return 'Scheduled';
+}
+
+function mapPendingRequest(request: ApiRideRequest): PendingRequest {
+  return {
+    id: request.id,
+    riderName: getPersonName(request.riderName, request.rider),
+    pickup: request.pickupLocation,
+    dropoff: request.dropoffLocation,
+    requestedTime: formatTime(getRequestSlotStart(request)),
+  };
+}
+
+function mapAvailability(slot: ApiAvailabilitySlot): AvailabilitySlot {
+  return {
+    id: slot.id,
+    startTime: formatTime(slot.startTime),
+    endTime: formatTime(slot.endTime),
+  };
+}
 
 export default function DriverDashboard() {
   const navigate = useNavigate();
+  const [driverFirstName, setDriverFirstName] = useState('');
+  const [rideRequests, setRideRequests] = useState<ApiRideRequest[]>([]);
+  const [tomorrowAvailability, setTomorrowAvailability] = useState<AvailabilitySlot[]>([]);
+  const [todaysEarnings, setTodaysEarnings] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        setIsLoading(true);
+        setError('');
+
+        const token = getToken();
+        let driverId = token ? getUserIdFromToken(token) : null;
+
+        if (!driverId) {
+          const currentUser = await userService.getCurrentUser();
+          driverId = currentUser.id;
+          setDriverFirstName(currentUser.firstName);
+        } else {
+          const currentUser = await userService.getUserById(driverId);
+          setDriverFirstName(currentUser.firstName);
+        }
+
+        const tomorrow = getDayRange(getTomorrow());
+
+        const [requests, availability] = await Promise.all([
+          rideRequestService.getRideRequests({
+            driverId,
+          }),
+          availabilityService.getAvailability({
+            driverId,
+            startTimeFrom: tomorrow.from,
+            startTimeTo: tomorrow.to,
+            isBooked: false,
+          }),
+        ]);
+
+        setRideRequests(requests);
+        setTomorrowAvailability(availability.map(mapAvailability));
+
+        try {
+          const dailyEarnings = await earningsService.getDailyEarnings(
+            driverId,
+            toInputDateValue(new Date())
+          );
+          setTodaysEarnings(dailyEarnings.totalEarnings);
+        } catch {
+          setTodaysEarnings(0);
+        }
+      } catch {
+        setRideRequests([]);
+        setTomorrowAvailability([]);
+        setTodaysEarnings(0);
+        setError('Unable to load dashboard data.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadDashboard();
+  }, []);
+
+  const todaysRides = useMemo(() => {
+    const today = new Date();
+
+    return rideRequests
+      .filter((request) => {
+        const status = getRideRequestStatusValue(request.status);
+        const visibleTodayStatus =
+          status === RideRequestStatusValue.Accepted ||
+          status === RideRequestStatusValue.Pending ||
+          status === RideRequestStatusValue.Cancelled ||
+          status === RideRequestStatusValue.Completed;
+
+        return (
+          isSameLocalDay(getRequestSlotStart(request), today) &&
+          visibleTodayStatus
+        );
+      })
+      .map(mapRide)
+      .sort((a, b) => a.sortTime - b.sortTime);
+  }, [rideRequests]);
+
+  const pendingRequests = useMemo(() => {
+    const today = new Date();
+
+    return rideRequests
+      .filter((request) => (
+        isSameLocalDay(getRequestSlotStart(request), today) &&
+        getRideRequestStatusValue(request.status) === RideRequestStatusValue.Pending
+      ))
+      .map(mapPendingRequest);
+  }, [rideRequests]);
+
   const visiblePendingRequests = pendingRequests.slice(0, 2);
 
   const handleManageSchedule = () => {
@@ -110,20 +245,30 @@ export default function DriverDashboard() {
       <header className="driver-dashboard__header">
         <div>
           <h1 className="driver-dashboard__title">
-            Good morning, {mockDriver.firstName}
+            Good morning{driverFirstName ? `, ${driverFirstName}` : ''}
           </h1>
           <p className="driver-dashboard__subtitle">
-            Here’s what your day is looking like.
+            Here's what your day is looking like.
           </p>
         </div>
       </header>
 
+      {error ? (
+        <section className="driver-dashboard__section">
+          <div className="dashboard-card">
+            <p className="empty-state">{error}</p>
+          </div>
+        </section>
+      ) : null}
+
       <section className="driver-dashboard__section">
         <div className="dashboard-card dashboard-card--highlight">
           <div className="dashboard-card__header">
-            <h2>Today’s Earnings</h2>
+            <h2>Today's Earnings</h2>
           </div>
-          <p className="dashboard-card__amount">${todaysEarnings.toFixed(2)}</p>
+          <p className="dashboard-card__amount">
+            {isLoading ? '...' : `$${todaysEarnings.toFixed(2)}`}
+          </p>
           <p className="dashboard-card__caption">
             Earnings updated throughout the day
           </p>
@@ -133,11 +278,13 @@ export default function DriverDashboard() {
       <section className="driver-dashboard__section">
         <div className="dashboard-card">
           <div className="dashboard-card__header">
-            <h2>Today’s Rides</h2>
+            <h2>Today's Rides</h2>
             <span className="dashboard-card__badge">{todaysRides.length}</span>
           </div>
 
-          {todaysRides.length > 0 ? (
+          {isLoading ? (
+            <p className="empty-state">Loading today's rides...</p>
+          ) : todaysRides.length > 0 ? (
             <div className="ride-list">
               {todaysRides.map((ride) => (
                 <div className="ride-item" key={ride.id}>
@@ -177,7 +324,9 @@ export default function DriverDashboard() {
             <span className="dashboard-card__badge">{pendingRequests.length}</span>
           </div>
 
-          {visiblePendingRequests.length > 0 ? (
+          {isLoading ? (
+            <p className="empty-state">Loading pending requests...</p>
+          ) : visiblePendingRequests.length > 0 ? (
             <div className="request-list">
               {visiblePendingRequests.map((request) => (
                 <div className="request-item" key={request.id}>
@@ -201,10 +350,12 @@ export default function DriverDashboard() {
 
         <div className="dashboard-card">
           <div className="dashboard-card__header">
-            <h2>Tomorrow’s Availability</h2>
+            <h2>Tomorrow's Availability</h2>
           </div>
 
-          {tomorrowAvailability.length > 0 ? (
+          {isLoading ? (
+            <p className="empty-state">Loading tomorrow's availability...</p>
+          ) : tomorrowAvailability.length > 0 ? (
             <div className="availability-list">
               {tomorrowAvailability.map((slot) => (
                 <div className="availability-item" key={slot.id}>

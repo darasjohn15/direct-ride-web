@@ -3,7 +3,7 @@ import './RequestCard.css';
 export type RequestStatus = 'pending' | 'accepted' | 'denied' | 'completed';
 
 export type RideRequest = {
-  id: number;
+  id: string;
   riderName: string;
   pickupLocation: string;
   dropoffLocation: string;
@@ -16,9 +16,9 @@ export type RideRequest = {
 
 type RequestCardProps = {
   request: RideRequest;
-  onAccept: (id: number) => void;
-  onDeny: (id: number) => void;
-  onCancel: (id: number) => void;
+  onAccept: (id: string) => void;
+  onDeny: (id: string) => void;
+  onCancel: (id: string) => void;
 };
 
 function formatStatusLabel(status: RequestStatus): string {

@@ -1,7 +1,8 @@
 import './AvailableDriverCard.css';
 
 export type AvailableDriver = {
-  id: number;
+  id: string;
+  availabilitySlotId: string;
   name: string;
   vehicle: string;
   rating: number;

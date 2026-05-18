@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../../../services/authService';
-import { getRoleFromToken } from '../../../types/auth';
+import { getRoleFromToken, setToken } from '../../../types/auth';
 import './Login.css';
 
 export default function Login() {
@@ -34,7 +34,7 @@ export default function Login() {
     const response = await login(formData.email, formData.password);
     const { token } = response;
 
-    localStorage.setItem('token', token);
+    setToken(token);
 
     const role = getRoleFromToken(token);
 

@@ -86,9 +86,16 @@
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-.date-selector__arrow:hover {
+.date-selector__arrow:hover:not(:disabled) {
   opacity: 0.95;
   transform: translateY(-1px);
+}
+
+.date-selector__arrow:disabled,
+.schedule-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .date-selector__center {
@@ -124,7 +131,7 @@
   transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease;
 }
 
-.schedule-button:hover {
+.schedule-button:hover:not(:disabled) {
   opacity: 0.95;
   transform: translateY(-1px);
 }

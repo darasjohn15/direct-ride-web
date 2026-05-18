@@ -146,6 +146,11 @@
   color: #175cd3;
 }
 
+.status-pill--pending {
+  background: #fff4db;
+  color: #b54708;
+}
+
 .status-pill--in-progress {
   background: #fff4db;
   color: #b54708;
@@ -154,6 +159,11 @@
 .status-pill--completed {
   background: #dff7e8;
   color: #146c43;
+}
+
+.status-pill--cancelled {
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .availability-item {
