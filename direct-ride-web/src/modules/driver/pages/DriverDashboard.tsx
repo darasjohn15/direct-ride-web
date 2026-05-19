@@ -163,11 +163,15 @@ export default function DriverDashboard() {
           setDriverFirstName(currentUser.firstName);
         }
 
+        const today = getDayRange(new Date());
         const tomorrow = getDayRange(getTomorrow());
 
         const [requests, availability] = await Promise.all([
           rideRequestService.getRideRequests({
             driverId,
+            slotStartTimeFrom: today.from,
+            slotStartTimeTo: today.to,
+            upcomingOnly: true,
           }),
           availabilityService.getAvailability({
             driverId,
@@ -262,12 +266,12 @@ export default function DriverDashboard() {
       ) : null}
 
       <section className="driver-dashboard__section">
-        <div className="dashboard-card dashboard-card--highlight">
+        <div className="dashboard-card dashboard-card--earnings">
           <div className="dashboard-card__header">
             <h2>Today's Earnings</h2>
           </div>
           <p className="dashboard-card__amount">
-            {isLoading ? '...' : `$${todaysEarnings.toFixed(2)}`}
+            {isLoading ? '...' : todaysEarnings > 0 ? `$${todaysEarnings.toFixed(2)}` : '$0.00'}
           </p>
           <p className="dashboard-card__caption">
             Earnings updated throughout the day

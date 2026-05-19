@@ -2,7 +2,23 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../../../services/authService';
 import { getRoleFromToken, setToken } from '../../../types/auth';
+import directRideLogoBackdrop from '../../../assets/direct-ride-logo.png';
 import './Login.css';
+
+type DirectRideLogoProps = {
+  tone: 'light' | 'dark';
+};
+
+function DirectRideLogo({ tone }: DirectRideLogoProps) {
+  return (
+    <div className={`direct-ride-logo direct-ride-logo--${tone}`} aria-label="DirectRide">
+      <span className="direct-ride-logo__mark" aria-hidden="true">
+        <span className="direct-ride-logo__slash" />
+      </span>
+      <span className="direct-ride-logo__text">DirectRide</span>
+    </div>
+  );
+}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -26,42 +42,48 @@ export default function Login() {
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setError('');
-  setIsSubmitting(true);
+    e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
 
-  try {
-    const response = await login(formData.email, formData.password);
-    const { token } = response;
+    try {
+      const response = await login(formData.email, formData.password);
+      const { token } = response;
 
-    setToken(token);
+      setToken(token);
 
-    const role = getRoleFromToken(token);
+      const role = getRoleFromToken(token);
 
-    if (role === 'driver') {
-      navigate('/driver/dashboard');
-    } else if (role === 'rider') {
-      navigate('/rider/dashboard');
-    } else {
-      setError('Unable to determine account role.');
+      if (role === 'driver') {
+        navigate('/driver/dashboard');
+      } else if (role === 'rider') {
+        navigate('/rider/dashboard');
+      } else {
+        setError('Unable to determine account role.');
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Login failed.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      setError(err.message);
-    } else {
-      setError('Login failed.');
-    }
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   return (
     <div className="login-page">
       <div className="login-shell">
         <div className="login-visual">
+          <img
+            className="login-visual__backdrop"
+            src={directRideLogoBackdrop}
+            alt=""
+            aria-hidden="true"
+          />
           <div className="visual-content">
-            <span className="brand-badge">DirectRide</span>
+            <DirectRideLogo tone="light" />
             <h1>Welcome back.</h1>
             <p>
               Sign in to access your DirectRide account and head to the right dashboard automatically.
@@ -71,6 +93,10 @@ export default function Login() {
 
         <div className="login-panel">
           <div className="login-card">
+            <div className="login-card__brand">
+              <DirectRideLogo tone="dark" />
+            </div>
+
             <div className="login-header">
               <h2>Sign in</h2>
               <p>Enter your email and password to continue.</p>

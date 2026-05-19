@@ -58,6 +58,7 @@ export type RideRequestFilters = {
   slotEndTimeTo?: string;
   createdAtFrom?: string;
   createdAtTo?: string;
+  upcomingOnly?: boolean;
 };
 
 export type CreateRideRequest = {
