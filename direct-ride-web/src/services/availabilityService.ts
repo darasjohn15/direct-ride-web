@@ -60,4 +60,19 @@ export const availabilityService = {
 
     return response.json();
   },
+
+  async createAvailabilityWindow(data: CreateAvailabilityRequest): Promise<AvailabilitySlot[]> {
+    const response = await authFetch(AVAILABILITY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw await parseApiError(response, 'Failed to create availability');
+    }
+
+    const body = await response.json();
+    return Array.isArray(body) ? body : [body];
+  },
 };

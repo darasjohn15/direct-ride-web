@@ -1,0 +1,242 @@
+.admin-user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.admin-user-details__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.admin-user-details__back {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 800;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.admin-user-details__title {
+  color: #14213d;
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.admin-user-details__subtitle {
+  color: #64748b;
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+
+.admin-user-details__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.admin-user-details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.8fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.admin-user-card,
+.admin-user-availability {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(20, 33, 61, 0.06);
+  min-width: 0;
+  padding: 22px;
+}
+
+.admin-user-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.admin-user-card__header h2 {
+  color: #14213d;
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.admin-user-card__header p,
+.admin-user-card__copy {
+  color: #64748b;
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+
+.admin-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  column-gap: 28px;
+  row-gap: 18px;
+}
+
+.admin-detail-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-detail-fields span {
+  color: #64748b;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.admin-detail-fields input,
+.admin-detail-fields select {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #14213d;
+  font: inherit;
+  font-size: 0.96rem;
+  min-height: 44px;
+  min-width: 0;
+  padding: 0 12px;
+}
+
+.admin-detail-fields input:disabled,
+.admin-detail-fields select:disabled {
+  background: #f8fafc;
+  color: #14213d;
+  opacity: 1;
+}
+
+.admin-detail-button {
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 800;
+  padding: 0 16px;
+}
+
+.admin-detail-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.admin-detail-button--primary {
+  background: #14213d;
+  color: #ffffff;
+}
+
+.admin-detail-button--secondary {
+  background: #eef2f7;
+  color: #344054;
+}
+
+.admin-detail-button--danger {
+  background: #b42318;
+  color: #ffffff;
+  margin-top: 18px;
+}
+
+.admin-add-user-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.admin-user-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 0.9rem;
+  font-weight: 800;
+  padding: 0 12px;
+}
+
+.admin-user-status--deactivated {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.admin-user-details__message,
+.admin-user-details__error,
+.admin-user-details-state {
+  border-radius: 8px;
+  font-weight: 700;
+  margin: 0;
+  padding: 14px 16px;
+}
+
+.admin-user-details__message {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.admin-user-details__error,
+.admin-user-details-state--error {
+  background: #fef2f2;
+  color: #b42318;
+}
+
+.admin-user-details-state {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+.admin-user-availability {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (max-width: 960px) {
+  .admin-user-details__header,
+  .admin-user-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-user-details__header {
+    flex-direction: column;
+  }
+
+  .admin-detail-fields {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    column-gap: 20px;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-user-details__title {
+    font-size: 1.6rem;
+  }
+
+  .admin-detail-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-add-user-actions {
+    flex-direction: column-reverse;
+  }
+}

@@ -66,7 +66,7 @@ export function getRoleFromToken(token: string): UserRole | null {
 
   if (normalizedRole === '0' || normalizedRole === 'rider') return 'rider';
   if (normalizedRole === '1' || normalizedRole === 'driver') return 'driver';
-  if (normalizedRole === 'admin') return 'admin';
+  if (normalizedRole === '2' || normalizedRole === 'admin') return 'admin';
 
   return null;
 }

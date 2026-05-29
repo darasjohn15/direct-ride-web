@@ -23,6 +23,10 @@ export default function RoleRoute({ allowedRole }: RoleRouteProps) {
       return <Navigate to="/rider/dashboard" replace />;
     }
 
+    if (role === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+
     return <Navigate to="/login" replace />;
   }
 

@@ -60,6 +60,8 @@ export default function Login() {
         navigate('/driver/dashboard');
       } else if (role === 'rider') {
         navigate('/rider/dashboard');
+      } else if (role === 'admin') {
+        navigate('/admin/dashboard');
       } else {
         setError('Unable to determine account role.');
       }
