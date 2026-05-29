@@ -267,11 +267,211 @@
   transform: none;
 }
 
+.secondary-auth-button {
+  min-height: 52px;
+  border: 1px solid #cfd9e8;
+  border-radius: 12px;
+  color: #0c1c3c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 900;
+  text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.secondary-auth-button:hover {
+  background: #f4f8ff;
+  border-color: #9eb7db;
+}
+
 .error-message {
   margin: 0;
   color: #b42318;
   font-size: 0.9rem;
   font-weight: 700;
+}
+
+.success-message {
+  margin: 0;
+  border: 1px solid #a7d7b4;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #f1fbf4;
+  color: #186a32;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.register-shell {
+  width: min(100%, 1360px);
+  min-height: 660px;
+  grid-template-columns: 0.86fr 1.04fr;
+}
+
+.register-panel {
+  padding: 42px 72px;
+}
+
+.register-card {
+  max-width: 590px;
+}
+
+.register-form {
+  gap: 16px;
+}
+
+.register-form .form-group {
+  gap: 8px;
+}
+
+.register-form .form-group input {
+  min-height: 52px;
+}
+
+.register-form .login-button {
+  margin-top: 4px;
+}
+
+.register-card .login-header p {
+  margin-bottom: 26px;
+}
+
+.register-name-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.role-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.role-fieldset legend {
+  margin: 0;
+  padding: 0;
+  color: #13213d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.role-segment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid #d4dce8;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 6px;
+}
+
+.role-option {
+  position: relative;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 8px;
+  color: #0c1c3c;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 800;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.role-option + .role-option {
+  border-left: 1px solid #d4dce8;
+  border-radius: 0 8px 8px 0;
+}
+
+.role-option--active {
+  background: linear-gradient(180deg, #eef6ff 0%, #dbeafa 100%);
+  box-shadow: inset 0 0 0 1px rgba(63, 105, 176, 0.08);
+}
+
+.role-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.role-option__icon {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+}
+
+.role-option__icon--rider::before {
+  position: absolute;
+  top: 3px;
+  left: 9px;
+  width: 7px;
+  height: 7px;
+  content: "";
+  border: 2px solid #0c1c3c;
+  border-radius: 999px;
+}
+
+.role-option__icon--rider::after {
+  position: absolute;
+  left: 5px;
+  bottom: 3px;
+  width: 14px;
+  height: 10px;
+  content: "";
+  border: 2px solid #0c1c3c;
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+}
+
+.role-option__icon--driver::before {
+  position: absolute;
+  left: 3px;
+  top: 8px;
+  width: 19px;
+  height: 10px;
+  content: "";
+  border: 2px solid #0c1c3c;
+  border-radius: 4px 4px 3px 3px;
+}
+
+.role-option__icon--driver::after {
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  content: "";
+  border-radius: 999px;
+  background: #0c1c3c;
+  box-shadow: 11px 0 0 #0c1c3c, 3px -11px 0 -1px #0c1c3c, 8px -11px 0 -1px #0c1c3c;
+}
+
+.auth-switch {
+  margin: 10px 0 0;
+  color: #58667a;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.auth-switch a {
+  color: #1f64bb;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 980px) {
@@ -306,6 +506,32 @@
 
   .login-card__brand .direct-ride-logo {
     justify-content: center;
+  }
+
+  .register-page {
+    justify-content: center;
+  }
+
+  .register-shell {
+    width: min(100%, 430px);
+  }
+
+  .register-panel {
+    padding: 34px 28px;
+  }
+
+  .register-card__brand {
+    display: block;
+    margin-bottom: 34px;
+  }
+
+  .register-card__brand .direct-ride-logo {
+    justify-content: center;
+  }
+
+  .register-name-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
 
@@ -343,5 +569,43 @@
   .form-group input,
   .login-button {
     min-height: 58px;
+  }
+
+  .register-panel {
+    padding: 28px 18px;
+  }
+
+  .register-form {
+    gap: 12px;
+  }
+
+  .register-card__brand {
+    margin-bottom: 30px;
+  }
+
+  .register-card .login-header p {
+    margin-bottom: 24px;
+  }
+
+  .register-form .form-group {
+    gap: 7px;
+  }
+
+  .register-form .form-group input {
+    min-height: 46px;
+  }
+
+  .register-form .login-button {
+    min-height: 54px;
+  }
+
+  .role-option {
+    min-height: 46px;
+    gap: 8px;
+    font-size: 0.94rem;
+  }
+
+  .auth-switch {
+    font-size: 0.9rem;
   }
 }

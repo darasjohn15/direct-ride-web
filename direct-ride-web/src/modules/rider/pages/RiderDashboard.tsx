@@ -1,71 +1,167 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  rideRequestService,
+  RideRequestStatusValue,
+  type RideRequest,
+} from '../../../services/rideRequestService';
+import { userService } from '../../../services/userService';
+import { getToken, getUserIdFromToken } from '../../../types/auth';
 import './RiderDashboard.css';
 
-type RideStatus = 'driver-assigned' | 'on-the-way' | 'scheduled';
-
-type ActiveRide = {
+type UpcomingRide = {
+  id: string;
   driverName: string;
-  pickupTime: string;
+  pickupDateTime: string;
   pickupLocation: string;
   dropoffLocation: string;
-  status: RideStatus;
 };
 
 type RecentTrip = {
-  id: number;
-  date: string;
+  id: string;
+  completedDateTime: string;
   pickupLocation: string;
   dropoffLocation: string;
   fare: number;
 };
 
-const mockRider = {
-  firstName: 'Avery',
-};
+function getDriverName(request: RideRequest): string {
+  if (request.driverName) return request.driverName;
+  if (request.driver) return `${request.driver.firstName} ${request.driver.lastName}`;
+  return 'Driver pending';
+}
 
-const activeRide: ActiveRide | null = {
-  driverName: 'Marcus Johnson',
-  pickupTime: 'Today at 5:15 PM',
-  pickupLocation: 'Ponce City Market',
-  dropoffLocation: 'Midtown Atlanta',
-  status: 'driver-assigned',
-};
+function getPickupDateTime(request: RideRequest): string {
+  return (
+    request.slotStartTime ??
+    request.availabilitySlot?.startTime ??
+    request.createdAt
+  );
+}
 
-// To test empty state later, change this to null
-// const activeRide: ActiveRide | null = null;
+function getCompletedDateTime(request: RideRequest): string {
+  return request.completedAt ?? getPickupDateTime(request);
+}
 
-const recentTrips: RecentTrip[] = [
-  {
-    id: 1,
-    date: 'Mar 27, 2026',
-    pickupLocation: 'Downtown Atlanta',
-    dropoffLocation: 'Buckhead',
-    fare: 22.5,
-  },
-  {
-    id: 2,
-    date: 'Mar 24, 2026',
-    pickupLocation: 'Old Fourth Ward',
-    dropoffLocation: 'Hartsfield-Jackson Airport',
-    fare: 36.75,
-  },
-  {
-    id: 3,
-    date: 'Mar 21, 2026',
-    pickupLocation: 'West Midtown',
-    dropoffLocation: 'Virginia-Highland',
-    fare: 18.2,
-  },
-];
+function getFare(request: RideRequest): number {
+  return request.fareAmount ?? request.fare ?? 0;
+}
 
-function formatRideStatus(status: RideStatus): string {
-  if (status === 'driver-assigned') return 'Driver Assigned';
-  if (status === 'on-the-way') return 'On the Way';
-  return 'Scheduled';
+function formatDateTimeLabel(dateTime: string): string {
+  const date = new Date(dateTime);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Date unavailable';
+  }
+
+  const dateLabel = date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+  const timeLabel = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  return `${dateLabel} at ${timeLabel}`;
+}
+
+function mapUpcomingRide(request: RideRequest): UpcomingRide {
+  return {
+    id: request.id,
+    driverName: getDriverName(request),
+    pickupDateTime: getPickupDateTime(request),
+    pickupLocation: request.pickupLocation,
+    dropoffLocation: request.dropoffLocation,
+  };
+}
+
+function mapRecentTrip(request: RideRequest): RecentTrip {
+  return {
+    id: request.id,
+    completedDateTime: getCompletedDateTime(request),
+    pickupLocation: request.pickupLocation,
+    dropoffLocation: request.dropoffLocation,
+    fare: getFare(request),
+  };
+}
+
+function parseDateTime(dateTime: string): number {
+  const time = new Date(dateTime).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 export default function RiderDashboard() {
   const navigate = useNavigate();
+  const [riderFirstName, setRiderFirstName] = useState('');
+  const [upcomingRide, setUpcomingRide] = useState<UpcomingRide | null>(null);
+  const [recentTrips, setRecentTrips] = useState<RecentTrip[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        setIsLoading(true);
+        setError('');
+
+        const token = getToken();
+        let riderId = token ? getUserIdFromToken(token) : null;
+
+        if (riderId) {
+          const rider = await userService.getUserById(riderId);
+          setRiderFirstName(rider.firstName);
+        } else {
+          const rider = await userService.getCurrentUser();
+          riderId = rider.id;
+          setRiderFirstName(rider.firstName);
+        }
+
+        const [upcomingRequests, completedRequests] = await Promise.all([
+          rideRequestService.getRideRequests({
+            riderId,
+            status: RideRequestStatusValue.Accepted,
+            upcomingOnly: true,
+          }),
+          rideRequestService.getRideRequests({
+            riderId,
+            status: RideRequestStatusValue.Completed,
+          }),
+        ]);
+
+        const nextUpcomingRide = upcomingRequests
+          .map(mapUpcomingRide)
+          .sort((a, b) => parseDateTime(a.pickupDateTime) - parseDateTime(b.pickupDateTime))[0] ?? null;
+        const latestRecentTrips = completedRequests
+          .map(mapRecentTrip)
+          .sort(
+            (a, b) =>
+              parseDateTime(b.completedDateTime) - parseDateTime(a.completedDateTime)
+          )
+          .slice(0, 3);
+
+        setUpcomingRide(nextUpcomingRide);
+        setRecentTrips(latestRecentTrips);
+      } catch {
+        setUpcomingRide(null);
+        setRecentTrips([]);
+        setError('Unable to load dashboard.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadDashboard();
+  }, []);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
 
   const handleBookRide = () => {
     navigate('/rider/book-ride');
@@ -79,9 +175,8 @@ export default function RiderDashboard() {
     <div className="rider-dashboard">
       <header className="rider-dashboard__header">
         <div>
-          <p className="rider-dashboard__eyebrow">Rider</p>
           <h1 className="rider-dashboard__title">
-            Good afternoon, {mockRider.firstName}
+            {greeting}{riderFirstName ? `, ${riderFirstName}` : ''}
           </h1>
           <p className="rider-dashboard__subtitle">
             Ready to go somewhere?
@@ -112,41 +207,49 @@ export default function RiderDashboard() {
       <section className="rider-dashboard__section">
         <div className="dashboard-card">
           <div className="dashboard-card__header">
-            <h2>Current Ride Status</h2>
+            <h2>Upcoming Ride</h2>
           </div>
 
-          {activeRide ? (
+          {isLoading ? (
+            <div className="empty-state-block">
+              <h3>Loading upcoming ride...</h3>
+              <p>Your next scheduled ride will appear here shortly.</p>
+            </div>
+          ) : error ? (
+            <div className="empty-state-block">
+              <h3>{error}</h3>
+              <p>Refresh the page or try again in a moment.</p>
+            </div>
+          ) : upcomingRide ? (
             <div className="active-ride-card">
               <div className="active-ride-card__top">
                 <div>
-                  <p className="active-ride-card__time">{activeRide.pickupTime}</p>
-                  <h3>{activeRide.driverName}</h3>
+                  <p className="active-ride-card__time">
+                    {formatDateTimeLabel(upcomingRide.pickupDateTime)}
+                  </p>
+                  <h3>{upcomingRide.driverName}</h3>
                 </div>
 
-                <span
-                  className={`status-pill status-pill--${activeRide.status}`}
-                >
-                  {formatRideStatus(activeRide.status)}
-                </span>
+                <span className="status-pill status-pill--scheduled">Scheduled</span>
               </div>
 
               <div className="active-ride-card__route">
                 <div className="route-box">
                   <p className="route-box__label">Pickup</p>
-                  <p className="route-box__value">{activeRide.pickupLocation}</p>
+                  <p className="route-box__value">{upcomingRide.pickupLocation}</p>
                 </div>
 
                 <div className="route-box">
                   <p className="route-box__label">Dropoff</p>
-                  <p className="route-box__value">{activeRide.dropoffLocation}</p>
+                  <p className="route-box__value">{upcomingRide.dropoffLocation}</p>
                 </div>
               </div>
             </div>
           ) : (
             <div className="empty-state-block">
-              <h3>No active ride</h3>
+              <h3>No upcoming ride</h3>
               <p>
-                You don&apos;t have a current or upcoming ride right now.
+                You don&apos;t have an accepted upcoming ride right now.
               </p>
             </div>
           )}
@@ -166,12 +269,24 @@ export default function RiderDashboard() {
             </button>
           </div>
 
-          {recentTrips.length > 0 ? (
+          {isLoading ? (
+            <div className="empty-state-block">
+              <h3>Loading recent trips...</h3>
+              <p>Your completed rides will appear here shortly.</p>
+            </div>
+          ) : error ? (
+            <div className="empty-state-block">
+              <h3>{error}</h3>
+              <p>Refresh the page or try again in a moment.</p>
+            </div>
+          ) : recentTrips.length > 0 ? (
             <div className="recent-trips-list">
               {recentTrips.map((trip) => (
                 <div className="trip-item" key={trip.id}>
                   <div className="trip-item__left">
-                    <p className="trip-item__date">{trip.date}</p>
+                    <p className="trip-item__date">
+                      {formatDateTimeLabel(trip.completedDateTime)}
+                    </p>
                     <h3>
                       {trip.pickupLocation} to {trip.dropoffLocation}
                     </h3>

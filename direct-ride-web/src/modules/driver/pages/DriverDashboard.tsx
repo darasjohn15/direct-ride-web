@@ -28,6 +28,7 @@ type PendingRequest = {
   pickup: string;
   dropoff: string;
   requestedTime: string;
+  sortTime: number;
 };
 
 type AvailabilitySlot = {
@@ -69,6 +70,45 @@ function formatTime(dateTime?: string): string {
     hour: 'numeric',
     minute: '2-digit',
   });
+}
+
+function toTimeInputValue(dateTime: string): string {
+  const date = new Date(dateTime);
+  return `${`${date.getHours()}`.padStart(2, '0')}:${`${date.getMinutes()}`.padStart(2, '0')}`;
+}
+
+function timeStringToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function minutesToTimeString(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${`${hours}`.padStart(2, '0')}:${`${minutes}`.padStart(2, '0')}`;
+}
+
+function formatTimeForDisplay(time: string): string {
+  const [hours, minutes] = time.split(':').map(Number);
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  const displayHour = hours % 12 === 0 ? 12 : hours % 12;
+  return `${displayHour}:${`${minutes}`.padStart(2, '0')} ${suffix}`;
+}
+
+function formatDateTime(dateTime?: string): string {
+  if (!dateTime) return 'Time unavailable';
+
+  const date = new Date(dateTime);
+  const dateLabel = date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+  const timeLabel = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  return `${dateLabel} at ${timeLabel}`;
 }
 
 function isSameLocalDay(dateTime: string | undefined, date: Date): boolean {
@@ -119,27 +159,59 @@ function getRideStatusLabel(status: RideRequestStatusValue): Ride['status'] {
 }
 
 function mapPendingRequest(request: ApiRideRequest): PendingRequest {
+  const slotStartTime = getRequestSlotStart(request);
+
   return {
     id: request.id,
     riderName: getPersonName(request.riderName, request.rider),
     pickup: request.pickupLocation,
     dropoff: request.dropoffLocation,
-    requestedTime: formatTime(getRequestSlotStart(request)),
+    requestedTime: formatDateTime(slotStartTime),
+    sortTime: slotStartTime ? new Date(slotStartTime).getTime() : Number.MAX_SAFE_INTEGER,
   };
 }
 
 function mapAvailability(slot: ApiAvailabilitySlot): AvailabilitySlot {
   return {
     id: slot.id,
-    startTime: formatTime(slot.startTime),
-    endTime: formatTime(slot.endTime),
+    startTime: toTimeInputValue(slot.startTime),
+    endTime: toTimeInputValue(slot.endTime),
   };
+}
+
+function mergeOverlappingSlots(slots: AvailabilitySlot[]): AvailabilitySlot[] {
+  if (slots.length <= 1) return slots;
+
+  const sorted = [...slots].sort(
+    (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
+  );
+
+  const merged: AvailabilitySlot[] = [];
+  let current = { ...sorted[0] };
+
+  for (let i = 1; i < sorted.length; i += 1) {
+    const next = sorted[i];
+    const currentEnd = timeStringToMinutes(current.endTime);
+    const nextStart = timeStringToMinutes(next.startTime);
+    const nextEnd = timeStringToMinutes(next.endTime);
+
+    if (nextStart <= currentEnd) {
+      current.endTime = minutesToTimeString(Math.max(currentEnd, nextEnd));
+    } else {
+      merged.push(current);
+      current = { ...next };
+    }
+  }
+
+  merged.push(current);
+  return merged;
 }
 
 export default function DriverDashboard() {
   const navigate = useNavigate();
   const [driverFirstName, setDriverFirstName] = useState('');
   const [rideRequests, setRideRequests] = useState<ApiRideRequest[]>([]);
+  const [pendingRideRequests, setPendingRideRequests] = useState<ApiRideRequest[]>([]);
   const [tomorrowAvailability, setTomorrowAvailability] = useState<AvailabilitySlot[]>([]);
   const [todaysEarnings, setTodaysEarnings] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -166,11 +238,16 @@ export default function DriverDashboard() {
         const today = getDayRange(new Date());
         const tomorrow = getDayRange(getTomorrow());
 
-        const [requests, availability] = await Promise.all([
+        const [requests, pendingRequests, availability] = await Promise.all([
           rideRequestService.getRideRequests({
             driverId,
             slotStartTimeFrom: today.from,
             slotStartTimeTo: today.to,
+            upcomingOnly: true,
+          }),
+          rideRequestService.getRideRequests({
+            driverId,
+            status: RideRequestStatusValue.Pending,
             upcomingOnly: true,
           }),
           availabilityService.getAvailability({
@@ -182,6 +259,7 @@ export default function DriverDashboard() {
         ]);
 
         setRideRequests(requests);
+        setPendingRideRequests(pendingRequests);
         setTomorrowAvailability(availability.map(mapAvailability));
 
         try {
@@ -195,6 +273,7 @@ export default function DriverDashboard() {
         }
       } catch {
         setRideRequests([]);
+        setPendingRideRequests([]);
         setTomorrowAvailability([]);
         setTodaysEarnings(0);
         setError('Unable to load dashboard data.');
@@ -228,17 +307,16 @@ export default function DriverDashboard() {
   }, [rideRequests]);
 
   const pendingRequests = useMemo(() => {
-    const today = new Date();
+    return pendingRideRequests
+      .map(mapPendingRequest)
+      .sort((a, b) => a.sortTime - b.sortTime);
+  }, [pendingRideRequests]);
 
-    return rideRequests
-      .filter((request) => (
-        isSameLocalDay(getRequestSlotStart(request), today) &&
-        getRideRequestStatusValue(request.status) === RideRequestStatusValue.Pending
-      ))
-      .map(mapPendingRequest);
-  }, [rideRequests]);
-
-  const visiblePendingRequests = pendingRequests.slice(0, 2);
+  const visiblePendingRequests = pendingRequests.slice(0, 3);
+  const mergedTomorrowAvailability = useMemo(
+    () => mergeOverlappingSlots(tomorrowAvailability),
+    [tomorrowAvailability]
+  );
 
   const handleManageSchedule = () => {
     navigate('/driver/schedule');
@@ -359,13 +437,13 @@ export default function DriverDashboard() {
 
           {isLoading ? (
             <p className="empty-state">Loading tomorrow's availability...</p>
-          ) : tomorrowAvailability.length > 0 ? (
+          ) : mergedTomorrowAvailability.length > 0 ? (
             <div className="availability-list">
-              {tomorrowAvailability.map((slot) => (
+              {mergedTomorrowAvailability.map((slot) => (
                 <div className="availability-item" key={slot.id}>
-                  <span>{slot.startTime}</span>
+                  <span>{formatTimeForDisplay(slot.startTime)}</span>
                   <span className="availability-item__divider">to</span>
-                  <span>{slot.endTime}</span>
+                  <span>{formatTimeForDisplay(slot.endTime)}</span>
                 </div>
               ))}
             </div>

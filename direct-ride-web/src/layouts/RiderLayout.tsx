@@ -12,7 +12,7 @@ const riderNavItems = [
 export default function RiderLayout() {
   return (
     <div className="app-layout">
-      <AppNavigation title="DirectRide Rider" items={riderNavItems} />
+      <AppNavigation title="DirectRide" items={riderNavItems} />
       <main className="app-layout__content">
         <div className="app-layout__content-inner">
           <Outlet />

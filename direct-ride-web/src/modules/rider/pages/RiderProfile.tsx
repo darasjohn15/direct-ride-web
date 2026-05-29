@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearToken } from '../../../types/auth';
+import { getUserRoleLabel, userService } from '../../../services/userService';
+import { clearToken, getToken, getUserIdFromToken } from '../../../types/auth';
 import './RiderProfile.css';
 
 type RiderUser = {
@@ -11,36 +12,63 @@ type RiderUser = {
   role: string;
 };
 
-const mockRider: RiderUser = {
-  firstName: 'Avery',
-  lastName: 'Brooks',
-  email: 'avery@directride.com',
-  phone: '(404) 555-0192',
-  role: 'Rider',
-};
-
 export default function RiderProfile() {
   const navigate = useNavigate();
-  const [showDeactivateMessage, setShowDeactivateMessage] = useState(false);
+  const [user, setUser] = useState<RiderUser>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        setIsLoading(true);
+        setLoadError('');
+
+        const token = getToken();
+        const userId = token ? getUserIdFromToken(token) : null;
+        const data = userId
+          ? await userService.getUserById(userId)
+          : await userService.getCurrentUser();
+
+        setUser({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phoneNumber,
+          role: getUserRoleLabel(data.role),
+        });
+      } catch {
+        setLoadError('Unable to load profile.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadUser();
+  }, []);
 
   const initials = useMemo(() => {
-    return `${mockRider.firstName.charAt(0)}${mockRider.lastName.charAt(0)}`.toUpperCase();
-  }, []);
+    if (!user) return '';
+    return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
+  }, [user]);
 
   const handleLogout = () => {
     clearToken();
     navigate('/login');
   };
 
-  const handleDeactivateAccount = () => {
-    setShowDeactivateMessage(true);
-  };
+  if (isLoading) {
+    return <div className="rider-profile">Loading profile...</div>;
+  }
+
+  if (loadError || !user) {
+    return <div className="rider-profile">{loadError || 'Profile unavailable.'}</div>;
+  }
 
   return (
     <div className="rider-profile">
       <header className="rider-profile__header">
         <div>
-          <p className="rider-profile__eyebrow">Rider</p>
           <h1 className="rider-profile__title">Profile</h1>
           <p className="rider-profile__subtitle">
             Manage your account information and settings.
@@ -53,9 +81,9 @@ export default function RiderProfile() {
 
         <div className="profile-hero__content">
           <h2>
-            {mockRider.firstName} {mockRider.lastName}
+            {user.firstName} {user.lastName}
           </h2>
-          <p>{mockRider.role}</p>
+          <p>{user.role}</p>
         </div>
       </section>
 
@@ -69,23 +97,23 @@ export default function RiderProfile() {
             <div className="info-row">
               <span className="info-row__label">Name</span>
               <span className="info-row__value">
-                {mockRider.firstName} {mockRider.lastName}
+                {user.firstName} {user.lastName}
               </span>
             </div>
 
             <div className="info-row">
               <span className="info-row__label">Role</span>
-              <span className="info-row__value">{mockRider.role}</span>
+              <span className="info-row__value">{user.role}</span>
             </div>
 
             <div className="info-row">
               <span className="info-row__label">Phone</span>
-              <span className="info-row__value">{mockRider.phone}</span>
+              <span className="info-row__value">{user.phone}</span>
             </div>
 
             <div className="info-row">
               <span className="info-row__label">Email</span>
-              <span className="info-row__value">{mockRider.email}</span>
+              <span className="info-row__value">{user.email}</span>
             </div>
           </div>
         </div>
@@ -103,21 +131,7 @@ export default function RiderProfile() {
             >
               Log Out
             </button>
-
-            <button
-              type="button"
-              className="profile-button profile-button--danger"
-              onClick={handleDeactivateAccount}
-            >
-              Deactivate Account
-            </button>
           </div>
-
-          {showDeactivateMessage ? (
-            <p className="deactivate-message">
-              Account deactivation flow not connected yet.
-            </p>
-          ) : null}
         </div>
       </section>
     </div>

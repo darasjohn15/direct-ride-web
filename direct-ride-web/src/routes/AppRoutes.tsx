@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import Login from '../modules/auth/pages/Login';
+import Register from '../modules/auth/pages/Register';
 
 import DriverLayout from '../layouts/DriverLayout';
 import RiderLayout from '../layouts/RiderLayout';
@@ -46,6 +47,7 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<RoleRoute allowedRole="driver" />}>

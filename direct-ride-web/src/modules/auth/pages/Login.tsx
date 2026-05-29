@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { login } from '../../../services/authService';
 import { getRoleFromToken, setToken } from '../../../types/auth';
 import directRideLogoBackdrop from '../../../assets/direct-ride-logo.png';
@@ -22,6 +22,8 @@ function DirectRideLogo({ tone }: DirectRideLogoProps) {
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const accountCreated = Boolean(location.state && 'accountCreated' in location.state);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -103,6 +105,10 @@ export default function Login() {
             </div>
 
             <form className="login-form" onSubmit={handleSubmit}>
+              {accountCreated ? (
+                <p className="success-message">Account created. Sign in to continue.</p>
+              ) : null}
+
               <div className="form-group">
                 <label htmlFor="email">Email address</label>
                 <input
@@ -143,6 +149,10 @@ export default function Login() {
               <button className="login-button" type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Signing in...' : 'Sign In'}
               </button>
+
+              <Link className="secondary-auth-button" to="/register">
+                Sign Up
+              </Link>
             </form>
           </div>
         </div>

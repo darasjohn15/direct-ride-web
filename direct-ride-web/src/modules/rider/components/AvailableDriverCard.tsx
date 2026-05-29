@@ -6,7 +6,6 @@ export type AvailableDriver = {
   name: string;
   vehicle: string;
   rating: number;
-  estimatedArrival: string;
   baseFare: number;
 };
 
@@ -39,11 +38,6 @@ export default function AvailableDriverCard({
       </div>
 
       <div className="available-driver-card__meta">
-        <div className="available-driver-card__meta-item">
-          <span className="available-driver-card__meta-label">ETA</span>
-          <span className="available-driver-card__meta-value">{driver.estimatedArrival}</span>
-        </div>
-
         <div className="available-driver-card__meta-item">
           <span className="available-driver-card__meta-label">Base Fare</span>
           <span className="available-driver-card__meta-value">${driver.baseFare.toFixed(2)}</span>

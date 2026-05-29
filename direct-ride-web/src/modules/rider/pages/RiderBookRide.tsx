@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { availabilityService, type AvailabilitySlot } from '../../../services/availabilityService';
 import { rideRequestService } from '../../../services/rideRequestService';
 import { getToken, getUserIdFromToken } from '../../../types/auth';
-import { userService } from '../../../services/userService';
+import { userService, type User } from '../../../services/userService';
 import AvailableDriverCard, {
   type AvailableDriver,
 } from '../components/AvailableDriverCard';
@@ -14,6 +14,20 @@ type TripForm = {
   pickupLocation: string;
   dropoffLocation: string;
 };
+
+const hourlyPickupTimes = Array.from({ length: 24 }, (_, hour) => {
+  const value = `${hour.toString().padStart(2, '0')}:00`;
+  const labelDate = new Date();
+  labelDate.setHours(hour, 0, 0, 0);
+
+  return {
+    value,
+    label: labelDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    }),
+  };
+});
 
 function getTomorrowDateInputValue(): string {
   const tomorrow = new Date();
@@ -37,6 +51,11 @@ function createDateTime(date: string, time: string): Date {
   return new Date(`${date}T${time}:00`);
 }
 
+function formatPickupTime(time: string): string {
+  const option = hourlyPickupTimes.find((pickupTime) => pickupTime.value === time);
+  return option?.label ?? time;
+}
+
 function getDayRange(date: string) {
   const start = new Date(`${date}T00:00:00`);
   const end = new Date(`${date}T23:59:59`);
@@ -57,16 +76,74 @@ function getBaseFare(slot: AvailabilitySlot): number {
   return slot.driver?.baseFare ?? 0;
 }
 
-function mapAvailabilityToDriver(slot: AvailabilitySlot): AvailableDriver {
+function getDriverBaseFare(slot: AvailabilitySlot, driver?: User): number {
+  return driver?.baseFare ?? getBaseFare(slot);
+}
+
+function getDriverId(slot: AvailabilitySlot): string {
+  return slot.driver?.id ?? slot.driverId;
+}
+
+function mapAvailabilityToDriver(slot: AvailabilitySlot, driver?: User): AvailableDriver {
   return {
-    id: slot.driverId,
+    id: getDriverId(slot),
     availabilitySlotId: slot.id,
-    name: getDriverName(slot),
+    name: driver ? `${driver.firstName} ${driver.lastName}` : getDriverName(slot),
     vehicle: 'DirectRide vehicle',
     rating: 5,
-    estimatedArrival: 'Available',
-    baseFare: getBaseFare(slot),
+    baseFare: getDriverBaseFare(slot, driver),
   };
+}
+
+function isBetterSlotForPickup(
+  candidate: AvailabilitySlot,
+  current: AvailabilitySlot,
+  pickupTime: number
+): boolean {
+  const candidateStart = new Date(candidate.startTime).getTime();
+  const currentStart = new Date(current.startTime).getTime();
+
+  if (candidateStart !== currentStart) {
+    return Math.abs(pickupTime - candidateStart) < Math.abs(pickupTime - currentStart);
+  }
+
+  const candidateDuration =
+    new Date(candidate.endTime).getTime() - new Date(candidate.startTime).getTime();
+  const currentDuration =
+    new Date(current.endTime).getTime() - new Date(current.startTime).getTime();
+
+  return candidateDuration < currentDuration;
+}
+
+function getUniqueDriverSlots(slots: AvailabilitySlot[], pickupDateTime: Date): AvailabilitySlot[] {
+  const pickupTime = pickupDateTime.getTime();
+  const slotsByDriver = new Map<string, AvailabilitySlot>();
+
+  slots.forEach((slot) => {
+    const driverId = getDriverId(slot);
+    const existingSlot = slotsByDriver.get(driverId);
+
+    if (!existingSlot || isBetterSlotForPickup(slot, existingSlot, pickupTime)) {
+      slotsByDriver.set(driverId, slot);
+    }
+  });
+
+  return Array.from(slotsByDriver.values());
+}
+
+async function mapAvailabilitySlotsToDrivers(
+  slots: AvailabilitySlot[]
+): Promise<AvailableDriver[]> {
+  return Promise.all(
+    slots.map(async (slot) => {
+      try {
+        const driver = await userService.getUserById(getDriverId(slot));
+        return mapAvailabilityToDriver(slot, driver);
+      } catch {
+        return mapAvailabilityToDriver(slot);
+      }
+    })
+  );
 }
 
 export default function RiderBookTrip() {
@@ -87,7 +164,9 @@ export default function RiderBookTrip() {
 
   const minDate = useMemo(() => getTomorrowDateInputValue(), []);
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = event.target;
 
     setFormData((prev) => ({
@@ -129,7 +208,10 @@ export default function RiderBookTrip() {
         return startTime <= pickupTime && pickupTime <= endTime && !slot.isBooked;
       });
 
-      setDrivers(matchingSlots.map(mapAvailabilityToDriver));
+      const uniqueDriverSlots = getUniqueDriverSlots(matchingSlots, pickupDateTime);
+      const availableDrivers = await mapAvailabilitySlotsToDrivers(uniqueDriverSlots);
+
+      setDrivers(availableDrivers);
       setSearchPerformed(true);
     } catch {
       setDrivers([]);
@@ -176,7 +258,7 @@ export default function RiderBookTrip() {
       setConfirmationMessage(
         `Your request has been sent to ${selectedDriver.name} for ${formatDateForSummary(
           formData.date
-        )} at ${formData.pickupTime}.`
+        )} at ${formatPickupTime(formData.pickupTime)}.`
       );
       setDrivers((prev) =>
         prev.filter((driver) => driver.availabilitySlotId !== selectedDriver.availabilitySlotId)
@@ -193,7 +275,6 @@ export default function RiderBookTrip() {
     <div className="rider-book-trip">
       <header className="rider-book-trip__header">
         <div>
-          <p className="rider-book-trip__eyebrow">Rider</p>
           <h1 className="rider-book-trip__title">Book a Ride</h1>
           <p className="rider-book-trip__subtitle">
             Choose a time and enter your trip details.
@@ -223,13 +304,19 @@ export default function RiderBookTrip() {
 
             <div className="form-group">
               <label htmlFor="pickupTime">Pick Up Time</label>
-              <input
+              <select
                 id="pickupTime"
                 name="pickupTime"
-                type="time"
                 value={formData.pickupTime}
                 onChange={handleChange}
-              />
+              >
+                <option value="">Select pickup time</option>
+                {hourlyPickupTimes.map((time) => (
+                  <option key={time.value} value={time.value}>
+                    {time.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">
@@ -282,7 +369,7 @@ export default function RiderBookTrip() {
 
             <div className="request-summary__row">
               <span>Pick Up Time</span>
-              <span>{formData.pickupTime || 'Not set'}</span>
+              <span>{formData.pickupTime ? formatPickupTime(formData.pickupTime) : 'Not set'}</span>
             </div>
 
             <div className="request-summary__row">
