@@ -1,7 +1,18 @@
 # DirectRide Frontend
 
-A modern ride-booking web application built with **React**.  
-DirectRide provides separate experiences for **Drivers** and **Riders**, each with their own dashboards, workflows, and features.
+A modern ride-booking web application built with React and TypeScript.
+DirectRide provides separate experiences for riders, drivers, and admins, with role-based routing and protected app modules.
+
+---
+
+## Tech Stack
+
+- React
+- TypeScript
+- React Router
+- Vite
+- CSS modules by feature/page
+- LocalStorage for JWT handling
 
 ---
 
@@ -9,105 +20,108 @@ DirectRide provides separate experiences for **Drivers** and **Riders**, each wi
 
 ### Authentication
 - JWT-based login
-- Role-based routing (Driver vs Rider)
+- Role-based redirects for Rider, Driver, and Admin users
 - Protected routes with automatic redirects
+- Shared token parsing for string and numeric role values
 
----
+### Admin Module
+Designed for administrators to monitor and manage the DirectRide platform.
 
-## Driver Module
+Screens:
+- Dashboard
+  - Admin landing page for future platform metrics
+- Users
+  - Backend-driven paginated users table
+  - Backend-driven search and role/status filters
+  - View button for user details
+  - Add User flow for Rider, Driver, and Admin accounts
+- User Details
+  - View user profile information
+  - Edit user info through the Users service
+  - Deactivate action UI
+  - Driver-only availability management
+  - Admin date picker can view and adjust availability for any date, including past dates
+- Rides
+  - Placeholder screen for future ride oversight
+- Profile
+  - Admin account info
+  - Logout
 
-Designed for drivers to manage their rides, availability, and earnings.
+### Driver Module
+Designed for drivers to manage rides, availability, and earnings.
 
-### Screens
-- **Dashboard**
+Screens:
+- Dashboard
   - Today’s rides
   - Earnings summary
   - Pending requests
   - Availability preview
-
-- **Requests**
-  - Tabs: Pending, Accepted, Denied, Completed
-  - Accept / Deny / Cancel actions
-  - Sorting + filtering
-
-- **Schedule**
+- Requests
+  - Tabs for Pending, Accepted, Denied, and Completed requests
+  - Accept, deny, cancel, and complete request workflows
+- Schedule
   - Set availability by date
   - Add and manage time slots
-  - Future-only scheduling
-
-- **Earnings**
+  - Future-only scheduling for drivers
+- Earnings
   - Weekly earnings overview
   - Ride count
   - Daily breakdown
-
-- **Profile**
+- Profile
   - User info
   - Base fare setting
-  - Logout / Deactivate account
+  - Logout
 
----
+### Rider Module
+Designed for riders to book and manage trips.
 
-## Rider Module
-
-Designed for riders to easily book and manage trips.
-
-### Screens
-- **Dashboard**
-  - Book a ride (primary CTA)
+Screens:
+- Dashboard
+  - Book a ride call to action
   - Active/upcoming ride
   - Recent trips
-
-- **Book a Ride**
+- Book a Ride
   - Future-only date selection
-  - Pickup & dropoff inputs
-  - Driver search
-  - Driver selection
-  - Request summary & confirmation
-
-- **Trips**
-  - Tabs: Confirmed, Pending, Completed
+  - Pickup and dropoff inputs
+  - Driver search and selection
+  - Request summary and confirmation
+- Trips
+  - Tabs for Confirmed, Pending, and Completed trips
   - Sorted ride history
   - Status tracking
-
-- **Profile**
+- Profile
   - User info
-  - Logout / Deactivate account
+  - Logout
 
 ---
 
-## Tech Stack
-
-- React (TypeScript)
-- React Router
-- CSS (component-based styling)
-- LocalStorage (JWT handling - mock)
-
----
-
-## 🗂️ Project Structure
+## Project Structure
 
 ```text
-
 src/
 ├── assets/               # Static files like images, icons, and branding assets
-├── components/           # Shared, reusable UI components used across the app
-│   ├── navigation/       # Navigation components (sidebar, menus, app navigation)
-├── data/                 # Mock data and static datasets for development/testing
-├── layouts/              # Layout wrappers that structure pages (e.g., DriverLayout, RiderLayout)
-├── modules/              # Feature-based modules separating app domains by role or function
+├── components/           # Shared reusable UI components
+│   └── navigation/       # App navigation and mobile menu components
+├── data/                 # Mock/static data used during development
+├── layouts/              # Role-specific layouts
+│   ├── AdminLayout.tsx
+│   ├── DriverLayout.tsx
+│   └── RiderLayout.tsx
+├── modules/              # Feature modules by app domain
+│   ├── admin/
+│   │   └── pages/        # Admin dashboard, users, user details, add user, rides, profile
 │   ├── auth/
-│   |   ├── pages/        # Authentication-related screens (login, etc.)
+│   │   └── pages/        # Login and register screens
 │   ├── driver/
-│   |   ├── components/   # Driver-specific reusable components
-│   |   ├── config/       # Driver-specific configs, constants, or helpers
-│   |   ├── pages/        # Driver-facing screens (dashboard, requests, etc.)
-│   ├── rider/
-│   |   ├── components/   # Rider-specific reusable components
-│   |   ├── config/       # Rider-facing screens (dashboard, trips, etc.)
-│   |   ├── pages/        # Application routing configuration and protected route logic
-├── routes/               # Application routing configuration and protected route logic
-├── services/             # API calls, business logic, and external integrations
-├── styles/               # Global styles, themes, and shared CSS utilities
-├── types/                # TypeScript types, interfaces, and shared type definitions
-
+│   │   ├── components/   # Driver-specific components
+│   │   ├── config/       # Driver navigation/config
+│   │   └── pages/        # Driver dashboard, schedule, requests, earnings, profile
+│   └── rider/
+│       ├── components/   # Rider-specific components
+│       ├── config/       # Rider navigation/config
+│       └── pages/        # Rider dashboard, book ride, trips, profile
+├── routes/               # App routing, protected routes, and role gates
+├── services/             # API services for auth, users, rides, availability, earnings
+├── styles/               # Global styles and shared variables
+└── types/                # Shared TypeScript types
 ```
