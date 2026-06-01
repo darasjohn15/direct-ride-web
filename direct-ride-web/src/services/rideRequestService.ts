@@ -43,6 +43,27 @@ export type RideRequest = {
   };
 };
 
+type RideRequestsResponseBody =
+  | RideRequest[]
+  | {
+      rideRequests?: RideRequest[];
+      data?: RideRequest[];
+      items?: RideRequest[];
+      results?: RideRequest[];
+      value?: RideRequest[];
+      $values?: RideRequest[];
+      Items?: RideRequest[];
+    };
+
+type RideRequestResponseBody =
+  | RideRequest
+  | {
+      rideRequest?: RideRequest;
+      data?: RideRequest;
+      item?: RideRequest;
+      value?: RideRequest;
+    };
+
 export type RideRequestFilters = {
   riderId?: string;
   riderName?: string;
@@ -69,7 +90,49 @@ export type CreateRideRequest = {
   dropoffLocation: string;
 };
 
+export type UpdateRideRequest = Partial<{
+  riderId: string;
+  driverId: string;
+  availabilitySlotId: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  fare: number;
+  fareAmount: number;
+  status: RideRequestStatusValue;
+  slotStartTime: string;
+  slotEndTime: string;
+}>;
+
 const RIDE_REQUESTS_URL = apiUrl('/ride-requests');
+
+function getRideRequestsFromResponse(body: RideRequestsResponseBody): RideRequest[] {
+  if (Array.isArray(body)) return body;
+
+  const lists = [
+    body.rideRequests,
+    body.data,
+    body.items,
+    body.results,
+    body.value,
+    body.$values,
+    body.Items,
+  ];
+  const rideRequests = lists.find((list) => Array.isArray(list));
+
+  if (rideRequests) return rideRequests;
+
+  throw new Error('Ride requests response did not include a ride request list.');
+}
+
+function getRideRequestFromResponse(body: RideRequestResponseBody): RideRequest {
+  if ('id' in body) return body;
+
+  const rideRequest = body.rideRequest ?? body.data ?? body.item ?? body.value;
+
+  if (rideRequest) return rideRequest;
+
+  throw new Error('Ride request response did not include a ride request.');
+}
 
 export const rideRequestService = {
   async getRideRequests(filters: RideRequestFilters = {}): Promise<RideRequest[]> {
@@ -79,7 +142,28 @@ export const rideRequestService = {
       throw await parseApiError(response, 'Failed to fetch ride requests');
     }
 
-    return response.json();
+    const body = await response.json() as RideRequestsResponseBody;
+    return getRideRequestsFromResponse(body);
+  },
+
+  async getRideRequestById(id: string): Promise<RideRequest> {
+    const response = await authFetch(`${RIDE_REQUESTS_URL}/${id}`);
+
+    if (response.ok) {
+      const body = await response.json() as RideRequestResponseBody;
+      return getRideRequestFromResponse(body);
+    }
+
+    if (response.status !== 404) {
+      throw await parseApiError(response, 'Failed to fetch ride request');
+    }
+
+    const rideRequests = await this.getRideRequests();
+    const rideRequest = rideRequests.find((request) => request.id === id);
+
+    if (!rideRequest) throw new Error('Ride request not found');
+
+    return rideRequest;
   },
 
   async createRideRequest(data: CreateRideRequest): Promise<RideRequest> {
@@ -94,6 +178,25 @@ export const rideRequestService = {
     }
 
     return response.json();
+  },
+
+  async updateRideRequest(id: string, data: UpdateRideRequest): Promise<RideRequest> {
+    const response = await authFetch(`${RIDE_REQUESTS_URL}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw await parseApiError(response, 'Failed to update ride request');
+    }
+
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return this.getRideRequestById(id);
+    }
+
+    const body = await response.json() as RideRequestResponseBody;
+    return getRideRequestFromResponse(body);
   },
 
   async updateRideRequestStatus(

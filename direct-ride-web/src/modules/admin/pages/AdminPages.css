@@ -91,6 +91,15 @@
   margin-bottom: 24px;
 }
 
+.admin-rides-toolbar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  column-gap: 28px;
+  row-gap: 16px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
 .admin-users-search,
 .admin-users-select {
   display: block;
@@ -107,6 +116,7 @@
 }
 
 .admin-users-search input,
+.admin-users-select input,
 .admin-users-select select {
   width: 100%;
   min-height: 44px;
@@ -119,7 +129,8 @@
   outline: none;
 }
 
-.admin-users-search input {
+.admin-users-search input,
+.admin-users-select input {
   padding: 0 16px;
 }
 
@@ -134,6 +145,7 @@
 }
 
 .admin-users-search input:focus,
+.admin-users-select input:focus,
 .admin-users-select select:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
@@ -179,6 +191,10 @@
   min-width: 980px;
   border-collapse: collapse;
   color: #14213d;
+}
+
+.admin-rides-table {
+  min-width: 1180px;
 }
 
 .admin-users-table th,
@@ -280,6 +296,52 @@
   color: #dc2626;
 }
 
+.admin-ride-status--pending {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.admin-ride-status--accepted {
+  background: #dbeafe;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.admin-ride-status--declined,
+.admin-ride-status--cancelled {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.admin-ride-status--completed {
+  background: #dcfce7;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.admin-ride-summary {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+}
+
+.admin-ride-summary dt {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.admin-ride-summary dd {
+  color: #14213d;
+  font-weight: 700;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .admin-user-view-button {
   min-height: 36px;
   border: 1px solid #d8dee8;
@@ -354,7 +416,8 @@
 }
 
 @media (max-width: 1100px) {
-  .admin-users-toolbar {
+  .admin-users-toolbar,
+  .admin-rides-toolbar {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -385,7 +448,8 @@
     padding: 18px;
   }
 
-  .admin-users-toolbar {
+  .admin-users-toolbar,
+  .admin-rides-toolbar {
     grid-template-columns: 1fr;
   }
 

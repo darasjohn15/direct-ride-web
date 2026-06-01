@@ -21,6 +21,7 @@ import RiderProfile from '../modules/rider/pages/RiderProfile';
 import AdminDashboard from '../modules/admin/pages/AdminDashboard';
 import AdminUsers from '../modules/admin/pages/AdminUsers';
 import AdminRides from '../modules/admin/pages/AdminRides';
+import AdminRideDetails from '../modules/admin/pages/AdminRideDetails';
 import AdminProfile from '../modules/admin/pages/AdminProfile';
 import AdminUserDetails from '../modules/admin/pages/AdminUserDetails';
 import AdminAddUser from '../modules/admin/pages/AdminAddUser';
@@ -89,6 +90,7 @@ export default function AppRoutes() {
               <Route path="users/new" element={<AdminAddUser />} />
               <Route path="users/:userId" element={<AdminUserDetails />} />
               <Route path="rides" element={<AdminRides />} />
+              <Route path="rides/:rideId" element={<AdminRideDetails />} />
               <Route path="profile" element={<AdminProfile />} />
             </Route>
           </Route>

@@ -5,6 +5,12 @@ DirectRide provides separate experiences for riders, drivers, and admins, with r
 
 ---
 
+## Frontend Architecture
+
+![DirectRide frontend architecture diagram](docs/frontend-architecture-diagram.png)
+
+---
+
 ## Tech Stack
 
 - React
