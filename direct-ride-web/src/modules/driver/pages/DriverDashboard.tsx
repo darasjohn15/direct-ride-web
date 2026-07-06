@@ -63,13 +63,21 @@ function toInputDateValue(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function formatTime(dateTime?: string): string {
+function formatRideDateTime(dateTime?: string): string {
   if (!dateTime) return 'Time unavailable';
 
-  return new Date(dateTime).toLocaleTimeString('en-US', {
+  const date = new Date(dateTime);
+  const dateLabel = date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+  const timeLabel = date.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
   });
+
+  return `${dateLabel} at ${timeLabel}`;
 }
 
 function toTimeInputValue(dateTime: string): string {
@@ -111,17 +119,6 @@ function formatDateTime(dateTime?: string): string {
   return `${dateLabel} at ${timeLabel}`;
 }
 
-function isSameLocalDay(dateTime: string | undefined, date: Date): boolean {
-  if (!dateTime) return false;
-
-  const value = new Date(dateTime);
-  return (
-    value.getFullYear() === date.getFullYear() &&
-    value.getMonth() === date.getMonth() &&
-    value.getDate() === date.getDate()
-  );
-}
-
 function getPersonName(
   directName: string | undefined,
   nestedPerson: { firstName: string; lastName: string } | undefined
@@ -144,7 +141,7 @@ function mapRide(request: ApiRideRequest): Ride {
     riderName: getPersonName(request.riderName, request.rider),
     pickup: request.pickupLocation,
     dropoff: request.dropoffLocation,
-    time: formatTime(slotStartTime),
+    time: formatRideDateTime(slotStartTime),
     status: getRideStatusLabel(status),
     sortTime: slotStartTime ? new Date(slotStartTime).getTime() : Number.MAX_SAFE_INTEGER,
   };
@@ -235,19 +232,17 @@ export default function DriverDashboard() {
           setDriverFirstName(currentUser.firstName);
         }
 
-        const today = getDayRange(new Date());
         const tomorrow = getDayRange(getTomorrow());
 
         const [requests, pendingRequests, availability] = await Promise.all([
           rideRequestService.getRideRequests({
             driverId,
-            slotStartTimeFrom: today.from,
-            slotStartTimeTo: today.to,
+            status: 'Accepted',
             upcomingOnly: true,
           }),
           rideRequestService.getRideRequests({
             driverId,
-            status: RideRequestStatusValue.Pending,
+            status: 'Pending',
             upcomingOnly: true,
           }),
           availabilityService.getAvailability({
@@ -285,22 +280,11 @@ export default function DriverDashboard() {
     loadDashboard();
   }, []);
 
-  const todaysRides = useMemo(() => {
-    const today = new Date();
-
+  const upcomingRides = useMemo(() => {
     return rideRequests
       .filter((request) => {
         const status = getRideRequestStatusValue(request.status);
-        const visibleTodayStatus =
-          status === RideRequestStatusValue.Accepted ||
-          status === RideRequestStatusValue.Pending ||
-          status === RideRequestStatusValue.Cancelled ||
-          status === RideRequestStatusValue.Completed;
-
-        return (
-          isSameLocalDay(getRequestSlotStart(request), today) &&
-          visibleTodayStatus
-        );
+        return status === RideRequestStatusValue.Accepted;
       })
       .map(mapRide)
       .sort((a, b) => a.sortTime - b.sortTime);
@@ -360,15 +344,15 @@ export default function DriverDashboard() {
       <section className="driver-dashboard__section">
         <div className="dashboard-card">
           <div className="dashboard-card__header">
-            <h2>Today's Rides</h2>
-            <span className="dashboard-card__badge">{todaysRides.length}</span>
+            <h2>Upcoming Rides</h2>
+            <span className="dashboard-card__badge">{upcomingRides.length}</span>
           </div>
 
           {isLoading ? (
-            <p className="empty-state">Loading today's rides...</p>
-          ) : todaysRides.length > 0 ? (
+            <p className="empty-state">Loading upcoming rides...</p>
+          ) : upcomingRides.length > 0 ? (
             <div className="ride-list">
-              {todaysRides.map((ride) => (
+              {upcomingRides.map((ride) => (
                 <div className="ride-item" key={ride.id}>
                   <div className="ride-item__main">
                     <h3>{ride.riderName}</h3>
@@ -379,7 +363,7 @@ export default function DriverDashboard() {
                       <strong>Dropoff:</strong> {ride.dropoff}
                     </p>
                     <p>
-                      <strong>Time:</strong> {ride.time}
+                      <strong>Pickup time:</strong> {ride.time}
                     </p>
                   </div>
 
@@ -394,7 +378,7 @@ export default function DriverDashboard() {
               ))}
             </div>
           ) : (
-            <p className="empty-state">No rides scheduled for today.</p>
+            <p className="empty-state">No upcoming rides scheduled.</p>
           )}
         </div>
       </section>

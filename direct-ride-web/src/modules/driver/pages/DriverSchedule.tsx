@@ -108,6 +108,42 @@ function mergeOverlappingSlots(slots: AvailabilitySlot[]): AvailabilitySlot[] {
   return merged;
 }
 
+function getMissingAvailabilityWindows(
+  requestedStart: number,
+  requestedEnd: number,
+  existingSlots: AvailabilitySlot[]
+): Array<{ startTime: string; endTime: string }> {
+  const missingWindows: Array<{ startTime: string; endTime: string }> = [];
+  let nextStart = requestedStart;
+
+  mergeOverlappingSlots(existingSlots).forEach((slot) => {
+    const existingStart = timeStringToMinutes(slot.startTime);
+    const existingEnd = timeStringToMinutes(slot.endTime);
+
+    if (existingEnd <= nextStart || existingStart >= requestedEnd) return;
+
+    if (existingStart > nextStart) {
+      missingWindows.push({
+        startTime: minutesToTimeString(nextStart),
+        endTime: minutesToTimeString(Math.min(existingStart, requestedEnd)),
+      });
+    }
+
+    nextStart = Math.max(nextStart, existingEnd);
+  });
+
+  if (nextStart < requestedEnd) {
+    missingWindows.push({
+      startTime: minutesToTimeString(nextStart),
+      endTime: minutesToTimeString(requestedEnd),
+    });
+  }
+
+  return missingWindows.filter(
+    (window) => timeStringToMinutes(window.endTime) > timeStringToMinutes(window.startTime)
+  );
+}
+
 export default function DriverSchedule() {
   const [selectedDate, setSelectedDate] = useState<Date>(getTomorrow());
   const [driverId, setDriverId] = useState('');
@@ -197,6 +233,7 @@ export default function DriverSchedule() {
       ...prev,
       [name]: value,
     }));
+    setError('');
   };
 
   const handleAddAvailability = async () => {
@@ -229,27 +266,46 @@ export default function DriverSchedule() {
     setIsSaving(true);
 
     try {
-      const createdSlot = await availabilityService.createAvailability({
-        driverId,
-        startTime: combineDateAndTime(selectedDate, newSlot.startTime),
-        endTime: combineDateAndTime(selectedDate, newSlot.endTime),
-      });
+      const windowsToCreate = getMissingAvailabilityWindows(
+        startMinutes,
+        endMinutes,
+        slots
+      );
+
+      if (windowsToCreate.length === 0) {
+        setError('That availability is already on your schedule.');
+        return;
+      }
+
+      const createdSlots = (
+        await Promise.all(
+          windowsToCreate.map((window) =>
+            availabilityService.createAvailabilityWindow({
+              driverId,
+              startTime: combineDateAndTime(selectedDate, window.startTime),
+              endTime: combineDateAndTime(selectedDate, window.endTime),
+            })
+          )
+        )
+      ).flat();
 
       setSlots((prev) => mergeOverlappingSlots([
         ...prev,
-        {
-          id: createdSlot.id,
-          startTime: toTimeInputValue(createdSlot.startTime),
-          endTime: toTimeInputValue(createdSlot.endTime),
-        },
+        ...createdSlots.map((slot) => ({
+          id: slot.id,
+          startTime: toTimeInputValue(slot.startTime),
+          endTime: toTimeInputValue(slot.endTime),
+        })),
       ]));
       setNewSlot({
         startTime: '',
         endTime: '',
       });
       setShowAddForm(false);
-    } catch {
-      setError('Unable to save availability.');
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : 'Unable to save availability.'
+      );
     } finally {
       setIsSaving(false);
     }

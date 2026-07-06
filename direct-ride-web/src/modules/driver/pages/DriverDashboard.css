@@ -48,6 +48,10 @@
   box-shadow: 0 16px 36px rgba(7, 26, 56, 0.18);
 }
 
+.driver-dashboard .dashboard-card--earnings .dashboard-card__header h2 {
+  color: #ffffff;
+}
+
 .dashboard-card__header {
   display: flex;
   justify-content: space-between;

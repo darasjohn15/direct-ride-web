@@ -48,6 +48,11 @@ export async function parseApiError(response: Response, fallbackMessage: string)
 
   if (contentType.includes('application/json')) {
     const body = await response.json().catch(() => null);
+
+    if (typeof body === 'string') {
+      return new Error(body || fallbackMessage);
+    }
+
     const message =
       body?.message ??
       body?.title ??
