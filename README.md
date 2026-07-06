@@ -22,6 +22,52 @@ DirectRide provides separate experiences for riders, drivers, and admins, with r
 
 ---
 
+## Deployment
+
+The frontend builds with Vite and deploys the generated `direct-ride-web/dist` assets to an S3 bucket. Account-specific AWS details are read from environment variables so the same flow works after moving to a new AWS account.
+
+### Required Values
+
+Set these values locally or as GitHub repository variables/secrets:
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `AWS_REGION` | Variable | AWS region that contains the S3 bucket. |
+| `S3_BUCKET` | Variable | Frontend hosting bucket name. |
+| `VITE_API_BASE_URL` | Variable | Production backend API base URL used at build time. |
+| `AWS_DEPLOY_ROLE_ARN` | Secret | IAM role ARN in the new AWS account for GitHub Actions OIDC deploys. |
+| `CLOUDFRONT_DISTRIBUTION_ID` | Variable, optional | CloudFront distribution to invalidate after S3 sync. |
+
+### Local Deploy
+
+```sh
+cd direct-ride-web
+export AWS_REGION=us-east-1
+export S3_BUCKET=your-frontend-bucket-name
+export VITE_API_BASE_URL=https://your-api.example.com
+export CLOUDFRONT_DISTRIBUTION_ID=E1234567890ABC # optional
+npm run deploy
+```
+
+The deploy script uploads hashed assets with long-lived cache headers and uploads `index.html` with revalidation headers so new app releases are picked up quickly.
+
+### GitHub Actions Deploy
+
+The workflow in `.github/workflows/deploy-frontend.yml` runs on pushes to `main` and can also be run manually. Configure these repository variables:
+
+- `AWS_REGION`
+- `S3_BUCKET`
+- `VITE_API_BASE_URL`
+- `CLOUDFRONT_DISTRIBUTION_ID` if the site is behind CloudFront
+
+Configure this repository secret:
+
+- `AWS_DEPLOY_ROLE_ARN`
+
+In the new AWS account, the role should trust GitHub OIDC for this repository and allow `s3:ListBucket`, `s3:PutObject`, and `s3:DeleteObject` for the frontend bucket. If CloudFront is used, also allow `cloudfront:CreateInvalidation` for the distribution.
+
+---
+
 ## Features
 
 ### Authentication
