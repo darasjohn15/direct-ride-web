@@ -32,11 +32,11 @@ Set these values locally or as GitHub repository variables/secrets:
 
 | Name | Type | Description |
 | --- | --- | --- |
-| `AWS_REGION` | Variable | AWS region that contains the S3 bucket. |
-| `S3_BUCKET` | Variable | Frontend hosting bucket name. |
+| `AWS_REGION` | Variable or secret | AWS region that contains the S3 bucket. |
+| `S3_BUCKET` | Variable or secret | Frontend hosting bucket name. |
 | `VITE_API_BASE_URL` | Variable | Production backend API base URL used at build time. |
 | `AWS_DEPLOY_ROLE_ARN` | Secret | IAM role ARN in the new AWS account for GitHub Actions OIDC deploys. |
-| `CLOUDFRONT_DISTRIBUTION_ID` | Variable, optional | CloudFront distribution to invalidate after S3 sync. |
+| `CLOUDFRONT_DISTRIBUTION_ID` | Variable or secret, optional | CloudFront distribution to invalidate after S3 sync. |
 
 ### Local Deploy
 
@@ -53,12 +53,15 @@ The deploy script uploads hashed assets with long-lived cache headers and upload
 
 ### GitHub Actions Deploy
 
-The workflow in `.github/workflows/deploy-frontend.yml` runs on pushes to `main` and can also be run manually. Configure these repository variables:
+The workflow in `.github/workflows/deploy-frontend.yml` runs on pushes to `main` and can also be run manually. Configure these repository variables or secrets:
 
 - `AWS_REGION`
 - `S3_BUCKET`
-- `VITE_API_BASE_URL`
 - `CLOUDFRONT_DISTRIBUTION_ID` if the site is behind CloudFront
+
+Configure this repository variable:
+
+- `VITE_API_BASE_URL`
 
 Configure this repository secret:
 
