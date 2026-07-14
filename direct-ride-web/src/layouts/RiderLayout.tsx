@@ -6,6 +6,7 @@ const riderNavItems = [
   { label: 'Dashboard', path: '/rider/dashboard' },
   { label: 'Book a Ride', path: '/rider/book-ride' },
   { label: 'My Trips', path: '/rider/trips' },
+  { label: 'Notifications', path: '/rider/notifications' },
   { label: 'Profile', path: '/rider/profile' },
 ];
 

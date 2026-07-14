@@ -7,6 +7,7 @@ const driverNavItems = [
   { label: 'Schedule', path: '/driver/schedule' },
   { label: 'Requests', path: '/driver/requests' },
   { label: 'Earnings', path: '/driver/earnings' },
+  { label: 'Notifications', path: '/driver/notifications' },
   { label: 'Profile', path: '/driver/profile' },
 ];
 

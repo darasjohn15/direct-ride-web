@@ -17,6 +17,7 @@ import RiderDashboard from '../modules/rider/pages/RiderDashboard';
 import RiderBookRide from '../modules/rider/pages/RiderBookRide';
 import RiderTrips from '../modules/rider/pages/RiderTrips';
 import RiderProfile from '../modules/rider/pages/RiderProfile';
+import Notifications from '../modules/notifications/pages/Notifications';
 
 import AdminDashboard from '../modules/admin/pages/AdminDashboard';
 import AdminUsers from '../modules/admin/pages/AdminUsers';
@@ -69,6 +70,7 @@ export default function AppRoutes() {
               <Route path="schedule" element={<DriverSchedule />} />
               <Route path="requests" element={<DriverRequests />} />
               <Route path="earnings" element={<DriverEarnings />} />
+              <Route path="notifications" element={<Notifications />} />
               <Route path="profile" element={<DriverProfile />} />
             </Route>
           </Route>
@@ -78,6 +80,7 @@ export default function AppRoutes() {
               <Route path="dashboard" element={<RiderDashboard />} />
               <Route path="book-ride" element={<RiderBookRide />} />
               <Route path="trips" element={<RiderTrips />} />
+              <Route path="notifications" element={<Notifications />} />
               <Route path="profile" element={<RiderProfile />} />
             </Route>
           </Route>
