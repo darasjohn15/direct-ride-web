@@ -221,6 +221,24 @@
   box-shadow: 0 0 0 3px rgba(22, 54, 111, 0.1);
 }
 
+.form-group input[aria-invalid="true"] {
+  border-color: #b42318;
+}
+
+.form-group input[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12);
+}
+
+.field-message {
+  margin: -2px 0 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.field-message--error {
+  color: #b42318;
+}
+
 .password-wrapper {
   position: relative;
   display: flex;

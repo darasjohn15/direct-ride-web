@@ -34,11 +34,14 @@ export default function Register() {
     email: '',
     phoneNumber: '',
     password: '',
+    confirmPassword: '',
   });
   const [role, setRole] = useState<RegistrationRole>('rider');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const passwordsDoNotMatch =
+    formData.confirmPassword.length > 0 && formData.password !== formData.confirmPassword;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -52,11 +55,21 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       await userService.createUser({
-        ...formData,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phoneNumber: formData.phoneNumber,
+        password: formData.password,
         role: roleToValue(role),
       });
 
@@ -182,6 +195,29 @@ export default function Register() {
                 </div>
               </div>
 
+              <div className="form-group">
+                <label htmlFor="confirmPassword">Confirm password</label>
+                <div className="password-wrapper">
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Re-enter your password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    autoComplete="new-password"
+                    aria-invalid={passwordsDoNotMatch}
+                    aria-describedby={passwordsDoNotMatch ? 'confirmPassword-error' : undefined}
+                    required
+                  />
+                </div>
+                {passwordsDoNotMatch ? (
+                  <p className="field-message field-message--error" id="confirmPassword-error">
+                    Passwords do not match.
+                  </p>
+                ) : null}
+              </div>
+
               <fieldset className="role-fieldset">
                 <legend>I'm registering as</legend>
                 <div className="role-segment" role="radiogroup" aria-label="Registration role">
@@ -213,7 +249,7 @@ export default function Register() {
 
               {error ? <p className="error-message">{error}</p> : null}
 
-              <button className="login-button" type="submit" disabled={isSubmitting}>
+              <button className="login-button" type="submit" disabled={isSubmitting || passwordsDoNotMatch}>
                 {isSubmitting ? 'Creating account...' : 'Create Account'}
               </button>
 
