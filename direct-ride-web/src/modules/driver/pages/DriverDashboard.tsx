@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   getRideRequestStatusValue,
   RideRequestStatusValue,
@@ -395,7 +395,12 @@ export default function DriverDashboard() {
           ) : visiblePendingRequests.length > 0 ? (
             <div className="request-list">
               {visiblePendingRequests.map((request) => (
-                <div className="request-item" key={request.id}>
+                <Link
+                  className="request-item request-item--link"
+                  key={request.id}
+                  to="/driver/requests"
+                  aria-label={`View pending requests for ${request.riderName}`}
+                >
                   <h3>{request.riderName}</h3>
                   <p>
                     <strong>Pickup:</strong> {request.pickup}
@@ -406,7 +411,7 @@ export default function DriverDashboard() {
                   <p>
                     <strong>Requested:</strong> {request.requestedTime}
                   </p>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
