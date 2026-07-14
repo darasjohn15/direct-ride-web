@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { availabilityService } from '../../../services/availabilityService';
 import { getToken, getUserIdFromToken } from '../../../types/auth';
 import { userService } from '../../../services/userService';
@@ -80,6 +81,10 @@ function getDayAvailabilityFilters(date: Date, driverId: string) {
   };
 }
 
+function hasRequiredBaseFare(baseFare: number | null | undefined): boolean {
+  return typeof baseFare === 'number' && Number.isFinite(baseFare) && baseFare > 0;
+}
+
 function mergeOverlappingSlots(slots: AvailabilitySlot[]): AvailabilitySlot[] {
   if (slots.length <= 1) return slots;
 
@@ -145,8 +150,10 @@ function getMissingAvailabilityWindows(
 }
 
 export default function DriverSchedule() {
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date>(getTomorrow());
   const [driverId, setDriverId] = useState('');
+  const [hasBaseFare, setHasBaseFare] = useState(false);
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -170,13 +177,24 @@ export default function DriverSchedule() {
 
         const token = getToken();
         let currentDriverId = token ? getUserIdFromToken(token) : null;
+        const currentUser = currentDriverId
+          ? await userService.getUserById(currentDriverId)
+          : await userService.getCurrentUser();
 
         if (!currentDriverId) {
-          const currentUser = await userService.getCurrentUser();
           currentDriverId = currentUser.id;
         }
 
         setDriverId(currentDriverId);
+
+        if (!hasRequiredBaseFare(currentUser.baseFare)) {
+          setHasBaseFare(false);
+          setShowAddForm(false);
+          setSlots([]);
+          return;
+        }
+
+        setHasBaseFare(true);
 
         const availability = await availabilityService.getAvailability(
           getDayAvailabilityFilters(selectedDate, currentDriverId)
@@ -327,141 +345,161 @@ export default function DriverSchedule() {
       </header>
 
       <section className="schedule-card">
-        <div className="schedule-card__header schedule-card__header--stack">
-          <div>
-            <h2>Date Selector</h2>
-            <p className="schedule-card__helper">
-              Availability defaults to tomorrow since rides must be booked the day before.
+        {!isLoading && !hasBaseFare ? (
+          <div className="schedule-locked">
+            <h2>Set your base fare first</h2>
+            <p>
+              Set your base fare to be able to set your schedule and start getting rides.
             </p>
-          </div>
-        </div>
-
-        <div className="date-selector">
-          <button
-            type="button"
-            className="date-selector__arrow"
-            onClick={handlePreviousDay}
-            disabled={isAtMinimumScheduleDate}
-            aria-label="Previous day"
-          >
-            ←
-          </button>
-
-          <div className="date-selector__center">
-            <p className="date-selector__label">{formatDateLabel(selectedDate)}</p>
-            <input
-              type="date"
-              className="date-selector__input"
-              value={toInputDateValue(selectedDate)}
-              min={toInputDateValue(minimumScheduleDate)}
-              onChange={handleDateChange}
-            />
-          </div>
-
-          <button
-            type="button"
-            className="date-selector__arrow"
-            onClick={handleNextDay}
-            aria-label="Next day"
-          >
-            →
-          </button>
-        </div>
-      </section>
-
-      <section className="schedule-grid">
-        <div className="schedule-card">
-          <div className="schedule-card__header">
-            <h2>Availability</h2>
             <button
               type="button"
               className="schedule-button schedule-button--primary"
-              onClick={() => {
-                setShowAddForm((prev) => !prev);
-                setError('');
-              }}
+              onClick={() => navigate('/driver/profile')}
             >
-              {showAddForm ? 'Cancel' : 'Add Availability'}
+              Go to Profile
             </button>
           </div>
-
-          {showAddForm ? (
-            <div className="add-slot-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="startTime">Start Time</label>
-                  <input
-                    id="startTime"
-                    name="startTime"
-                    type="time"
-                    value={newSlot.startTime}
-                    onChange={handleNewSlotChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="endTime">End Time</label>
-                  <input
-                    id="endTime"
-                    name="endTime"
-                    type="time"
-                    value={newSlot.endTime}
-                    onChange={handleNewSlotChange}
-                  />
-                </div>
+        ) : (
+          <>
+            <div className="schedule-card__header schedule-card__header--stack">
+              <div>
+                <h2>Date Selector</h2>
+                <p className="schedule-card__helper">
+                  Availability defaults to tomorrow since rides must be booked the day before.
+                </p>
               </div>
+            </div>
 
-              {error ? <p className="form-error">{error}</p> : null}
+            <div className="date-selector">
+              <button
+                type="button"
+                className="date-selector__arrow"
+                onClick={handlePreviousDay}
+                disabled={isAtMinimumScheduleDate}
+                aria-label="Previous day"
+              >
+                ←
+              </button>
+
+              <div className="date-selector__center">
+                <p className="date-selector__label">{formatDateLabel(selectedDate)}</p>
+                <input
+                  type="date"
+                  className="date-selector__input"
+                  value={toInputDateValue(selectedDate)}
+                  min={toInputDateValue(minimumScheduleDate)}
+                  onChange={handleDateChange}
+                />
+              </div>
 
               <button
                 type="button"
-                className="schedule-button schedule-button--primary"
-                onClick={handleAddAvailability}
-                disabled={isSaving}
+                className="date-selector__arrow"
+                onClick={handleNextDay}
+                aria-label="Next day"
               >
-                {isSaving ? 'Saving...' : 'Save Availability'}
+                →
               </button>
             </div>
-          ) : null}
+          </>
+        )}
+      </section>
 
-          {isLoading ? (
-            <div className="empty-state">
-              <h3>Loading availability</h3>
-              <p>Checking your schedule for this day.</p>
+      {isLoading || hasBaseFare ? (
+        <section className="schedule-grid">
+          <div className="schedule-card">
+            <div className="schedule-card__header">
+              <h2>Availability</h2>
+              <button
+                type="button"
+                className="schedule-button schedule-button--primary"
+                onClick={() => {
+                  setShowAddForm((prev) => !prev);
+                  setError('');
+                }}
+              >
+                {showAddForm ? 'Cancel' : 'Add Availability'}
+              </button>
             </div>
-          ) : mergedSlots.length > 0 ? (
-            <div className="availability-list">
-              {mergedSlots.map((slot) => (
-                <div className="availability-card" key={slot.id}>
-                  <div>
-                    <h3>
-                      {formatTimeForDisplay(slot.startTime)} to{' '}
-                      {formatTimeForDisplay(slot.endTime)}
-                    </h3>
-                    <p>Available for ride requests during this time slot.</p>
+
+            {showAddForm ? (
+              <div className="add-slot-form">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="startTime">Start Time</label>
+                    <input
+                      id="startTime"
+                      name="startTime"
+                      type="time"
+                      value={newSlot.startTime}
+                      onChange={handleNewSlotChange}
+                    />
                   </div>
 
-                  <button
-                    type="button"
-                    className="availability-card__delete"
-                    onClick={() => handleDeleteSlot(slot.id)}
-                  >
-                    Remove
-                  </button>
+                  <div className="form-group">
+                    <label htmlFor="endTime">End Time</label>
+                    <input
+                      id="endTime"
+                      name="endTime"
+                      type="time"
+                      value={newSlot.endTime}
+                      onChange={handleNewSlotChange}
+                    />
+                  </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state">
-              <h3>Set your schedule</h3>
-              <p>
-                You haven&apos;t added any availability for this day yet. Add a time slot
-                so riders can book with you.
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
+
+                {error ? <p className="form-error">{error}</p> : null}
+
+                <button
+                  type="button"
+                  className="schedule-button schedule-button--primary"
+                  onClick={handleAddAvailability}
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving...' : 'Save Availability'}
+                </button>
+              </div>
+            ) : null}
+
+            {isLoading ? (
+              <div className="empty-state">
+                <h3>Loading availability</h3>
+                <p>Checking your schedule for this day.</p>
+              </div>
+            ) : mergedSlots.length > 0 ? (
+              <div className="availability-list">
+                {mergedSlots.map((slot) => (
+                  <div className="availability-card" key={slot.id}>
+                    <div>
+                      <h3>
+                        {formatTimeForDisplay(slot.startTime)} to{' '}
+                        {formatTimeForDisplay(slot.endTime)}
+                      </h3>
+                      <p>Available for ride requests during this time slot.</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="availability-card__delete"
+                      onClick={() => handleDeleteSlot(slot.id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <h3>Set your schedule</h3>
+                <p>
+                  You haven&apos;t added any availability for this day yet. Add a time slot
+                  so riders can book with you.
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

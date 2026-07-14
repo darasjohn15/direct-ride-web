@@ -143,6 +143,22 @@
   box-shadow: 0 6px 16px rgba(20, 33, 61, 0.18);
 }
 
+.schedule-locked {
+  max-width: 560px;
+}
+
+.schedule-locked h2 {
+  margin: 0 0 10px;
+  font-size: 1.3rem;
+  color: #14213d;
+}
+
+.schedule-locked p {
+  margin: 0 0 18px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
 .add-slot-form {
   margin-bottom: 18px;
   padding: 18px;
