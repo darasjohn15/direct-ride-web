@@ -41,17 +41,19 @@ const emptyStateCopy: Record<RequestStatus, { title: string; body: string }> = {
   },
 };
 
-function parsePickupTime(time: string): number {
-  if (!time.includes(':')) return Number.MAX_SAFE_INTEGER;
+function parsePickupDateTime(dateTime: string): number {
+  const time = new Date(dateTime).getTime();
+  return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
+}
 
-  const [clock, period] = time.split(' ');
-  const [rawHours, minutes] = clock.split(':').map(Number);
-  let hours = rawHours;
+function formatPickupDate(dateTime?: string): string {
+  if (!dateTime) return 'Date unavailable';
 
-  if (period === 'PM' && hours !== 12) hours += 12;
-  if (period === 'AM' && hours === 12) hours = 0;
-
-  return hours * 60 + minutes;
+  return new Date(dateTime).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function formatPickupTime(dateTime?: string): string {
@@ -84,6 +86,10 @@ function mapRequestStatus(status: ApiRideRequest['status']): RequestStatus {
   return 'pending';
 }
 
+function getRequestFare(request: ApiRideRequest): number {
+  return request.fareAmount ?? request.fare ?? 0;
+}
+
 function mapApiRideRequest(request: ApiRideRequest): RideRequest {
   const slotStartTime = request.slotStartTime ?? request.availabilitySlot?.startTime;
 
@@ -92,10 +98,12 @@ function mapApiRideRequest(request: ApiRideRequest): RideRequest {
     riderName: getPersonName(request.riderName, request.rider),
     pickupLocation: request.pickupLocation,
     dropoffLocation: request.dropoffLocation,
+    pickupDate: formatPickupDate(slotStartTime),
     pickupTime: formatPickupTime(slotStartTime),
+    pickupDateTime: slotStartTime ?? '',
     createdAt: request.createdAt,
     distanceMiles: 0,
-    estimatedFare: request.fare ?? 0,
+    estimatedFare: getRequestFare(request),
     status: mapRequestStatus(request.status),
   };
 }
@@ -117,8 +125,8 @@ export default function DriverRequests() {
         let driverId = token ? getUserIdFromToken(token) : null;
 
         if (!driverId) {
-          const currentUser = await userService.getCurrentUser();
-          driverId = currentUser.id;
+          const currentDriver = await userService.getCurrentUser();
+          driverId = currentDriver.id;
         }
 
         const rideRequests = await rideRequestService.getRideRequests({ driverId });
@@ -139,7 +147,7 @@ export default function DriverRequests() {
 
     next.sort((a, b) => {
       if (sortBy === 'pickup-time') {
-        return parsePickupTime(a.pickupTime) - parsePickupTime(b.pickupTime);
+        return parsePickupDateTime(a.pickupDateTime) - parsePickupDateTime(b.pickupDateTime);
       }
 
       return (

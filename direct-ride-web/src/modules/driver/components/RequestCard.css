@@ -21,11 +21,18 @@
   flex: 1;
 }
 
-.request-card__pickup-time {
+.request-card__pickup-date {
   margin: 0 0 6px;
   font-size: 0.9rem;
   font-weight: 700;
   color: #175cd3;
+}
+
+.request-card__pickup-time {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #14213d;
 }
 
 .request-card__rider {

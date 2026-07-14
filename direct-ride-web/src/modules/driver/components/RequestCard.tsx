@@ -7,7 +7,9 @@ export type RideRequest = {
   riderName: string;
   pickupLocation: string;
   dropoffLocation: string;
+  pickupDate: string;
   pickupTime: string;
+  pickupDateTime: string;
   createdAt: string;
   distanceMiles: number;
   estimatedFare: number;
@@ -34,15 +36,16 @@ export default function RequestCard({
   return (
     <article className="request-card">
       <div className="request-card__top">
-  <div className="request-card__top-main">
-    <p className="request-card__pickup-time">{request.pickupTime}</p>
-    <h3 className="request-card__rider">{request.riderName}</h3>
-  </div>
+        <div className="request-card__top-main">
+          <p className="request-card__pickup-date">{request.pickupDate}</p>
+          <p className="request-card__pickup-time">{request.pickupTime}</p>
+          <h3 className="request-card__rider">{request.riderName}</h3>
+        </div>
 
-  <span className={`request-card__status request-card__status--${request.status}`}>
-    {formatStatusLabel(request.status)}
-  </span>
-</div>
+        <span className={`request-card__status request-card__status--${request.status}`}>
+          {formatStatusLabel(request.status)}
+        </span>
+      </div>
 
       <div className="request-card__route">
         <div className="request-card__location-group">
@@ -63,7 +66,7 @@ export default function RequestCard({
         </div>
 
         <div className="request-card__meta-item">
-          <span className="request-card__meta-label">Estimated Fare</span>
+          <span className="request-card__meta-label">Fare</span>
           <span className="request-card__meta-value">${request.estimatedFare.toFixed(2)}</span>
         </div>
       </div>
