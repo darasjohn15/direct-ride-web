@@ -18,7 +18,7 @@ type Ride = {
   pickup: string;
   dropoff: string;
   time: string;
-  status: 'Pending' | 'Scheduled' | 'Completed' | 'Cancelled';
+  status: 'Pending' | 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled';
   sortTime: number;
 };
 
@@ -36,6 +36,8 @@ type AvailabilitySlot = {
   startTime: string;
   endTime: string;
 };
+
+const RIDE_ACTION_WINDOW_MS = 60 * 60 * 1000;
 
 function getDayRange(date: Date) {
   const start = new Date(date);
@@ -149,10 +151,17 @@ function mapRide(request: ApiRideRequest): Ride {
 
 function getRideStatusLabel(status: RideRequestStatusValue): Ride['status'] {
   if (status === RideRequestStatusValue.Pending) return 'Pending';
+  if (status === RideRequestStatusValue.InProgress) return 'In Progress';
   if (status === RideRequestStatusValue.Completed) return 'Completed';
   if (status === RideRequestStatusValue.Cancelled) return 'Cancelled';
 
   return 'Scheduled';
+}
+
+function canManageScheduledRide(pickupTime: number, now: number): boolean {
+  if (!Number.isFinite(pickupTime)) return false;
+
+  return pickupTime - now <= RIDE_ACTION_WINDOW_MS;
 }
 
 function mapPendingRequest(request: ApiRideRequest): PendingRequest {
@@ -212,6 +221,8 @@ export default function DriverDashboard() {
   const [tomorrowAvailability, setTomorrowAvailability] = useState<AvailabilitySlot[]>([]);
   const [todaysEarnings, setTodaysEarnings] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
+  const [updatingRideId, setUpdatingRideId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -237,7 +248,6 @@ export default function DriverDashboard() {
         const [requests, pendingRequests, availability] = await Promise.all([
           rideRequestService.getRideRequests({
             driverId,
-            status: 'Accepted',
             upcomingOnly: true,
           }),
           rideRequestService.getRideRequests({
@@ -280,11 +290,22 @@ export default function DriverDashboard() {
     loadDashboard();
   }, []);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setNow(Date.now());
+    }, 60 * 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   const upcomingRides = useMemo(() => {
     return rideRequests
       .filter((request) => {
         const status = getRideRequestStatusValue(request.status);
-        return status === RideRequestStatusValue.Accepted;
+        return (
+          status === RideRequestStatusValue.Accepted ||
+          status === RideRequestStatusValue.InProgress
+        );
       })
       .map(mapRide)
       .sort((a, b) => a.sortTime - b.sortTime);
@@ -304,6 +325,34 @@ export default function DriverDashboard() {
 
   const handleManageSchedule = () => {
     navigate('/driver/schedule');
+  };
+
+  const updateRideStatus = async (id: string, status: RideRequestStatusValue) => {
+    setError('');
+    setUpdatingRideId(id);
+
+    try {
+      const updatedRide = await rideRequestService.updateRideRequestStatus(id, status);
+      setRideRequests((prev) =>
+        prev.map((request) => (request.id === id ? updatedRide : request))
+      );
+    } catch {
+      setError('Unable to update ride status.');
+    } finally {
+      setUpdatingRideId(null);
+    }
+  };
+
+  const handleStartRide = (id: string) => {
+    updateRideStatus(id, RideRequestStatusValue.InProgress);
+  };
+
+  const handleCompleteRide = (id: string) => {
+    updateRideStatus(id, RideRequestStatusValue.Completed);
+  };
+
+  const handleCancelRide = (id: string) => {
+    updateRideStatus(id, RideRequestStatusValue.Cancelled);
   };
 
   return (
@@ -367,13 +416,57 @@ export default function DriverDashboard() {
                     </p>
                   </div>
 
-                  <span
-                    className={`status-pill status-pill--${ride.status
-                      .toLowerCase()
-                      .replace(/\s+/g, '-')}`}
-                  >
-                    {ride.status}
-                  </span>
+                  <div className="ride-item__controls">
+                    <span
+                      className={`status-pill status-pill--${ride.status
+                        .toLowerCase()
+                        .replace(/\s+/g, '-')}`}
+                    >
+                      {ride.status}
+                    </span>
+
+                    {ride.status === 'Scheduled' && canManageScheduledRide(ride.sortTime, now) ? (
+                      <div className="ride-item__actions" aria-label={`Actions for ${ride.riderName}`}>
+                        <button
+                          type="button"
+                          className="ride-action-button ride-action-button--primary"
+                          disabled={updatingRideId === ride.id}
+                          onClick={() => handleStartRide(ride.id)}
+                        >
+                          {updatingRideId === ride.id ? 'Starting...' : 'Start'}
+                        </button>
+                        <button
+                          type="button"
+                          className="ride-action-button ride-action-button--danger"
+                          disabled={updatingRideId === ride.id}
+                          onClick={() => handleCancelRide(ride.id)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {ride.status === 'In Progress' ? (
+                      <div className="ride-item__actions" aria-label={`Actions for ${ride.riderName}`}>
+                        <button
+                          type="button"
+                          className="ride-action-button ride-action-button--primary"
+                          disabled={updatingRideId === ride.id}
+                          onClick={() => handleCompleteRide(ride.id)}
+                        >
+                          {updatingRideId === ride.id ? 'Completing...' : 'Complete'}
+                        </button>
+                        <button
+                          type="button"
+                          className="ride-action-button ride-action-button--danger"
+                          disabled={updatingRideId === ride.id}
+                          onClick={() => handleCancelRide(ride.id)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>

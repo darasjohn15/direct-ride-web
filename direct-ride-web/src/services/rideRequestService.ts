@@ -6,6 +6,7 @@ export const RideRequestStatusValue = {
   Declined: 2,
   Completed: 3,
   Cancelled: 4,
+  InProgress: 5,
 } as const;
 
 export type RideRequestStatusValue =
@@ -242,6 +243,15 @@ export function getRideRequestStatusValue(
     normalizedStatus === 'canceled'
   ) {
     return RideRequestStatusValue.Cancelled;
+  }
+  if (
+    normalizedStatus === '5' ||
+    normalizedStatus === 'inprogress' ||
+    normalizedStatus === 'in-progress' ||
+    normalizedStatus === 'in progress' ||
+    normalizedStatus === 'started'
+  ) {
+    return RideRequestStatusValue.InProgress;
   }
 
   return RideRequestStatusValue.Pending;
